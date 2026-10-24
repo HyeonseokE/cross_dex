@@ -54,26 +54,69 @@ pip install --no-deps -e /workspace/DexVerse/vr_teleop      # 시뮬레이터 �
 필요한 외부 것: Manus Linux SDK(`$MANUS_SDK_PY`, 기본 `/workspace/manus_sdk/Python`), Bench2Dex URDF-Zoo(`$URDF_ZOO_DIR`),
 CloudXR 런타임(DexVerse `scripts/teleop_tools/start_cloudxr_runtime.sh`), Quest와 서버가 같은 Tailscale.
 
-## 사용 순서 (DexVerse)
+## 실행 순서 (bs1, 컨테이너가 이미 있다는 전제)
+
+### 1. 컨테이너 들어가기 (터미널마다)
 
 ```bash
-source /workspace/dexverse_env.sh            # VR_TELEOP_CALIB 등 기본값 포함
+ssh bs1
+docker exec -it dexverse bash
+source /workspace/dexverse_env.sh        # 환경 활성화 + 기본값 (VR_TELEOP_CALIB, URDF_ZOO_DIR, 저장 경로)
 cd /workspace/DexVerse
-# 1) 터미널 1: CloudXR 런타임 (Quest 접속용)
-CXR_ENDPOINT_IP=<서버 Tailscale IP> scripts/teleop_tools/start_cloudxr_runtime.sh
-# 2) 캘리브레이션 (마운트를 새로 끼웠을 때만): tools/calibration/README.md
-scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_pivot.py --side right
-scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_rotation.py --side right
-# 3) 텔레옵 / 녹화 (Manus 브리지는 없으면 자동 실행)
-vr_teleop/vr_teleop/tools/dexverse_session.sh teleop --task Dexverse-GraspCup-v1
-vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 20
 ```
-Quest: 컨트롤러 모드(손 추적 끄기) → `https://nvidia.github.io/IsaacTeleop/client` → 서버 IP, 포트 48322 → Connect.
-캘리브레이션 앱은 AR(패스스루), 텔레옵은 VR로 들어간다. 프로그램을 다시 띄울 때마다 Disconnect → Connect.
+터미널 2개를 쓴다: ① CloudXR 런타임, ② 텔레옵·녹화·캘리브레이션 앱.
 
-**START**: 로봇은 헤드셋 메뉴 START 전에는 움직이지 않는다. 손을 로봇 손 근처·같은 방향(책상에서 약 20 cm 위)에 두고
-START → XR 기준점을 옮겨 내 손을 로봇 손에 겹치고(recenter), 그때부터 변화량을 따라온다. 어긋나면 STOP → 맞추기 → START.
-`record` 모드는 성공 조건이 유지되면 저장·리셋하고, 다음 데모도 START로 시작한다.
+### 2. Manus 글러브 연결 (컨테이너 안)
+
+```bash
+# 동글 확인 (컨테이너에는 lsusb가 없다): "Sensor Dongle (USB 1-11)" 같은 줄이 나오면 정상
+for d in /sys/bus/usb/devices/*; do [ "$(cat $d/idVendor 2>/dev/null)" = 3325 ] && echo "$(cat $d/product) (USB $(cat $d/busnum)-$(cat $d/devnum))"; done
+# 글러브 전원을 켠 뒤 브리지 실행 (dexverse_session.sh가 없으면 자동으로 띄우므로 따로 확인할 때만)
+vr_teleop/vr_teleop/tools/run_manus_bridge.sh          # 5초마다 gloves=[('0x...', 'right')] 이면 정상
+# 받는 값 확인 (다른 터미널): 1초마다 bridge=ok ... gloves=['right'], Ctrl+C로 종료
+python vr_teleop/vr_teleop/devices/manus/bridge/manus_bridge_client.py
+```
+`gloves=[]`: 글러브 전원·절전. 동글은 한 프로그램만 잡으므로 다른 Manus 프로그램이 떠 있으면 끈다.
+
+### 3. Quest 3 연결
+
+```bash
+# (bs1 호스트, 컨테이너 밖) Quest에서 Tailscale을 켜고 확인: pong이 나오면 정상
+tailscale ping quest-3
+# (컨테이너, 터미널 ①) CloudXR 런타임, 계속 켜 둔다: "CloudXR runtime: running"
+CXR_ENDPOINT_IP=<서버 Tailscale IP> scripts/teleop_tools/start_cloudxr_runtime.sh     # 서버 IP: 호스트에서 tailscale ip -4
+```
+Quest: 손 추적을 꺼서 **컨트롤러 모드**로 두고, 오른쪽 컨트롤러를 오른손 마운트에 단다. 4·5단계에서 앱을 띄운 뒤
+브라우저에서 `https://nvidia.github.io/IsaacTeleop/client` → 서버 IP, 포트 `48322` → Connect →
+**Enter VR**(텔레옵) / **AR·패스스루**(회전 캘리브레이션). 앱을 다시 띄울 때마다 Disconnect → Connect.
+인증서 오류면 `https://<서버 IP>:48322`를 먼저 열어 수락. CloudXR 첫 실행 때는 NVIDIA EULA에 `y`.
+
+### 4. 캘리브레이션 (마운트를 새로 끼웠거나 움직임이 이상할 때만, 터미널 ②)
+
+```bash
+# ① 피벗 (손목 위치): 손목을 책상 모서리에 고정, 왼손으로 오른쪽 트리거를 꾹 누른 채 20~30초 꺾고 비틀기 → A
+scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_pivot.py --side right
+# ② 회전 (손 방향): AR(패스스루)로 접속 → 실제 손을 초록 손에 겹치고 노란 점을 초록 큰 점에 → A (0.5초 정지)
+#    → 빨간 손이 초록 손에 겹치는지 확인 → B 2초 눌러 종료
+scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_rotation.py --side right
+```
+결과는 `$VR_TELEOP_CALIB`(`.../calibration/current.json`)에 저장되고 이전 값은 `history/`로 백업된다.
+판정: 피벗 RMS 5 mm 이하, 회전은 저장 후 로그 `hand vs target rotation`이 몇 도 이내. 자세한 내용은 `tools/calibration/README.md`.
+
+### 5. 텔레옵 / 녹화 (터미널 ②)
+
+```bash
+vr_teleop/vr_teleop/tools/dexverse_session.sh teleop --task Dexverse-GraspCup-v1                  # 연습
+vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 20   # 녹화
+```
+1. Quest로 Connect → **Enter VR**.
+2. 로봇은 **헤드셋 메뉴 START 전에는 움직이지 않는다**. 오른손을 책상에서 약 20 cm 띄우고 로봇 손 근처·같은 방향에
+   두고 START → XR 기준점을 옮겨 내 손을 로봇 손에 겹치고(recenter), 그때부터 변화량을 따라온다.
+3. 어긋나면 **STOP → 손 맞추기 → START**.
+4. `record`: 성공 조건이 유지되면 저장·리셋, 다음 데모도 START로 시작. 종료는 Ctrl+C.
+
+결과: `/workspace/datasets/dexverse/teleop/trajectories/<카테고리>/<태스크>/*.pkl`, 로그: `/workspace/logs/teleop/YYYYMMDD/`.
+VR 없이 손가락만 점검: `run_manus_bridge.sh --fake --port 47001` 후 `python vr_teleop/vr_teleop/tools/check_fingers_headless.py --task ... --port 47001 --headless --enable_cameras`.
 
 ## 환경변수 (DexVerse 연결, `teleop/dexverse_integration.py`)
 
