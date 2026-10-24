@@ -54,21 +54,31 @@ pip install --no-deps -e /workspace/DexVerse/vr_teleop      # 시뮬레이터 �
 필요한 외부 것: Manus Linux SDK(`$MANUS_SDK_PY`, 기본 `/workspace/manus_sdk/Python`), Bench2Dex URDF-Zoo(`$URDF_ZOO_DIR`),
 CloudXR 런타임(DexVerse `scripts/teleop_tools/start_cloudxr_runtime.sh`), Quest와 서버가 같은 Tailscale.
 
-## 빠른 실행 (매 세션 필수만)
+## 빠른 실행 (매 세션 필수만, 순서대로)
 
+**장비 준비**
+1. Manus 글러브(오른손)를 끼고 **전원을 켠다**. 동글은 bs1에 꽂혀 있어야 한다.
+2. 오른쪽 Quest 컨트롤러를 **오른손 마운트에 장착**하고 켠다.
+3. Quest 3를 쓰고 **Tailscale을 켠다**, 손 추적을 꺼서 **컨트롤러 모드**로 둔다.
+
+**프로그램 실행** (bs1 컨테이너, 터미널 2개 모두 아래 3줄로 들어간다)
 ```bash
 ssh bs1
 docker exec -it dexverse bash
 source /workspace/dexverse_env.sh && cd /workspace/DexVerse
-CXR_ENDPOINT_IP=<서버 Tailscale IP> scripts/teleop_tools/start_cloudxr_runtime.sh                   # 터미널 ①, 계속 켜 둠
-vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 20      # 터미널 ② (연습은 teleop)
 ```
-Quest(컨트롤러 모드) → `https://nvidia.github.io/IsaacTeleop/client` → 서버 IP, 포트 48322 → Connect → Enter VR →
-손을 로봇 손 근처·같은 방향에 두고 헤드셋 메뉴 START.
+4. 터미널 ① — CloudXR 런타임 (계속 켜 둔다):
+   `CXR_ENDPOINT_IP=<서버 Tailscale IP> scripts/teleop_tools/start_cloudxr_runtime.sh`
+5. 터미널 ② — 녹화(연습은 `record` 대신 `teleop`). Manus 브리지는 없으면 이 스크립트가 띄운다:
+   `vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 20`
 
-`dexverse_session.sh`가 Manus 브리지를 없으면 띄우고 `VR_TELEOP_*` 기본값(손목=컨트롤러, 캘리브레이션 파일)을 채운다.
-아래 "실행 순서"의 동글·글러브·Tailscale 확인은 **안 될 때 원인을 찾는 점검용**이고, 캘리브레이션은 **마운트를 새로
-끼웠을 때만** 한다.
+**접속과 시작**
+6. Quest 브라우저 `https://nvidia.github.io/IsaacTeleop/client` → 서버 IP, 포트 `48322` → Connect → **Enter VR**.
+7. 오른손을 책상에서 약 20 cm 띄우고 로봇 손 근처·같은 방향에 둔 뒤 헤드셋 메뉴 **START** (이전엔 로봇이 안 움직인다).
+   어긋나면 STOP → 맞추기 → START. 녹화는 성공하면 자동 저장·리셋되고 다음 데모도 START로 시작한다.
+
+아래 "실행 순서 (자세히)"의 동글·글러브·Tailscale 확인 명령은 **안 될 때 원인을 찾는 점검용**이고,
+캘리브레이션(4단계)은 **마운트를 새로 끼웠을 때만** 한다. 서버 Tailscale IP는 호스트에서 `tailscale ip -4`.
 
 ## 실행 순서 (자세히) (bs1, 컨테이너가 이미 있다는 전제)
 
