@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vr_teleop"
+version = "0.1.0"
+description = "VR teleoperation with Manus gloves and a Meta Quest 3 (glove-mounted controller), portable across simulators"
+requires-python = ">=3.10"
+# Core needs numpy / scipy. Finger retargeting needs dex_retargeting (+ pinocchio); the Isaac Lab device,
+# the Quest OpenXR input and the calibration apps need Isaac Sim / Isaac Lab; the DexVerse integration
+# needs dexverse. They are not declared so the package installs into an existing simulator environment.
+dependencies = ["numpy", "scipy"]
+
+[tool.setuptools.packages.find]
+include = ["vr_teleop*"]
+
+[tool.setuptools.package-data]
+"vr_teleop.teleop.retarget.bench2dex" = ["hand_cfgs/*.yml"]
