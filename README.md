@@ -54,7 +54,23 @@ pip install --no-deps -e /workspace/DexVerse/vr_teleop      # 시뮬레이터 �
 필요한 외부 것: Manus Linux SDK(`$MANUS_SDK_PY`, 기본 `/workspace/manus_sdk/Python`), Bench2Dex URDF-Zoo(`$URDF_ZOO_DIR`),
 CloudXR 런타임(DexVerse `scripts/teleop_tools/start_cloudxr_runtime.sh`), Quest와 서버가 같은 Tailscale.
 
-## 실행 순서 (bs1, 컨테이너가 이미 있다는 전제)
+## 빠른 실행 (매 세션 필수만)
+
+```bash
+ssh bs1
+docker exec -it dexverse bash
+source /workspace/dexverse_env.sh && cd /workspace/DexVerse
+CXR_ENDPOINT_IP=<서버 Tailscale IP> scripts/teleop_tools/start_cloudxr_runtime.sh                   # 터미널 ①, 계속 켜 둠
+vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 20      # 터미널 ② (연습은 teleop)
+```
+Quest(컨트롤러 모드) → `https://nvidia.github.io/IsaacTeleop/client` → 서버 IP, 포트 48322 → Connect → Enter VR →
+손을 로봇 손 근처·같은 방향에 두고 헤드셋 메뉴 START.
+
+`dexverse_session.sh`가 Manus 브리지를 없으면 띄우고 `VR_TELEOP_*` 기본값(손목=컨트롤러, 캘리브레이션 파일)을 채운다.
+아래 "실행 순서"의 동글·글러브·Tailscale 확인은 **안 될 때 원인을 찾는 점검용**이고, 캘리브레이션은 **마운트를 새로
+끼웠을 때만** 한다.
+
+## 실행 순서 (자세히) (bs1, 컨테이너가 이미 있다는 전제)
 
 ### 1. 컨테이너 들어가기 (터미널마다)
 
