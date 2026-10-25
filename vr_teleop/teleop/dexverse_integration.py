@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, fields
 from typing import Any
 
@@ -38,6 +39,25 @@ BENCH2DEX_HAND_TYPE = {"shadow": "shadow", "allegro": "allegro", "leap": "leap",
 _N = R.from_euler("y", 90, degrees=True) * R.from_euler("x", -90, degrees=True)
 DEXVERSE_ROBOT_WRIST_FROM_OPENXR = tuple(float(v) for v in np.roll(_N.as_quat(), 1))  # wxyz
 _SIDE = {DeviceBase.TrackingTarget.HAND_LEFT: "left", DeviceBase.TrackingTarget.HAND_RIGHT: "right"}
+# DexVerse action finger joint -> Bench2Dex (URDF-Zoo) joint, where the two name the same joint differently.
+# Inspire: DexVerse drives the 6 actuated joints (the rest are mimic), URDF-Zoo RH56DFX calls them <side>_<finger>_<n>_joint.
+_INSPIRE_TO_BENCH2DEX = {"thumb_proximal_yaw_joint": "thumb_1_joint", "thumb_proximal_pitch_joint": "thumb_2_joint",
+                         "index_proximal_joint": "index_1_joint", "middle_proximal_joint": "middle_1_joint",
+                         "ring_proximal_joint": "ring_1_joint", "pinky_proximal_joint": "little_1_joint"}
+
+
+def bench2dex_joint_name(action_name: str, bench2dex_names: list[str], side: str) -> str | None:
+    """The Bench2Dex joint driving the DexVerse action joint ``action_name`` (None if there is none)."""
+    if action_name in bench2dex_names:
+        return action_name
+    bare = re.sub(r"^(right|left)_", "", action_name)
+    leap = re.fullmatch(r"(?:leap_)?(\d+)", bare)  # LEAP: DexVerse leap_<n> / <side>_<n>, URDF-Zoo "<n>"
+    if leap and leap.group(1) in bench2dex_names:
+        return leap.group(1)
+    if bare in _INSPIRE_TO_BENCH2DEX:
+        name = f"{side}_{_INSPIRE_TO_BENCH2DEX[bare]}"
+        return name if name in bench2dex_names else None
+    return None
 
 
 class Bench2DexFingerRetargeter(SimpleRelativeRetargeter):
@@ -57,7 +77,10 @@ class Bench2DexFingerRetargeter(SimpleRelativeRetargeter):
             b2d = Bench2DexHand(hand_type, _SIDE[hand], input_device=cfg.bench2dex_input_device)
             self._hands[hand] = b2d
             self._dex_output_joint_names[hand] = b2d.joint_names
-            self._dex_to_action_finger_indices[hand] = self._build_finger_name_mapping(hand)
+            b2d_names = list(b2d.joint_names)
+            self._dex_to_action_finger_indices[hand] = [
+                None if (b := bench2dex_joint_name(n, b2d_names, _SIDE[hand])) is None else b2d_names.index(b)
+                for n in self._layout["hands"][hand].get("finger_joint_names", ())]
             names = self._layout["hands"][hand].get("finger_joint_names", ())
             missing = [n for n, i in zip(names, self._dex_to_action_finger_indices[hand]) if i is None]
             print(f"[vr_teleop] {hand.name}: {b2d.bridge}" + (f", unmatched action joints {missing}" if missing else ""))
