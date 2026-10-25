@@ -1,8 +1,9 @@
 """Pivot calibration of a glove-mounted Quest controller (Isaac Sim XR app): record + solve + save.
 
-Rest the wrist on a fixed point (table edge), hold the TRIGGER of that hand's controller (press it with
-the other hand) and rotate the hand in every direction (flex / extend, side to side, twist) for 20-30 s.
-Samples are recorded only while the trigger is held. A (right) / X (left) finishes: the offset of the
+Rest the wrist on a fixed point (table edge), press B (right) / Y (left) to start recording and rotate the
+hand in every direction (flex / extend, side to side, twist) for 20-30 s. Pressing B / Y again restarts the
+recording. A (right) / X (left) finishes (no buttons to hold, so the other hand does not cover the
+controller's tracking LEDs): the offset of the
 wrist rotation centre in the controller frame is solved (``pivot_solver.py``) and saved for that side
 into the calibration JSON (``mount_calibration.py``; the other side and the mount rotation are kept,
 the previous file goes to ``history/``). The raw poses are kept next to it as ``history/pivot_<side>_<time>.npz``.
@@ -25,7 +26,6 @@ from isaaclab.app import AppLauncher
 parser = argparse.ArgumentParser(description="Pivot calibration of a glove-mounted Quest controller.")
 parser.add_argument("--side", choices=("right", "left"), required=True)
 parser.add_argument("--calib", default=os.environ.get("VR_TELEOP_CALIB"), help="calibration JSON (default $VR_TELEOP_CALIB)")
-parser.add_argument("--trigger_threshold", type=float, default=0.5)
 # Accepted for DexVerse run_teleop.sh compatibility; unused here.
 parser.add_argument("--teleop_device", type=str, default=None, help=argparse.SUPPRESS)
 parser.add_argument("--enable_pinocchio", action="store_true", help=argparse.SUPPRESS)
@@ -51,8 +51,8 @@ def main() -> None:
     request_ar_session(simulation_app)
     tracked = TrackedPose()
     samples: list[np.ndarray] = []
-    held, frame = False, 0
-    print(f"[pivot] {args.side}: hold the trigger and rotate the hand about the fixed wrist; A/X = finish.")
+    recording, b_prev, frame = False, False, 0
+    print(f"[pivot] {args.side}: B/Y = start recording, rotate the hand about the fixed wrist; A/X = finish.")
     while simulation_app.is_running():
         simulation_app.update()
         frame += 1
@@ -63,11 +63,12 @@ def main() -> None:
                 print(f"[pivot] waiting for the {args.side} controller (connect the headset in controller mode)")
             continue
         pose, inputs = ctrl
-        pressed = inputs[BUTTONS["trigger"]] > args.trigger_threshold
-        if pressed != held:
-            held = pressed
-            print(f"[pivot] {'recording' if pressed else 'paused'} ({len(samples)} samples)")
-        if pressed:
+        b_now = inputs[BUTTONS["secondary"]] > 0.5
+        if b_now and not b_prev:
+            print(f"[pivot] recording{' restarted' if recording else ''}: rotate the hand; A/X = finish")
+            recording, samples = True, []
+        b_prev = b_now
+        if recording:
             samples.append(pose.copy())
         if frame % 180 == 0:
             print(f"[pivot] {args.side}=({pose[0]:+.3f},{pose[1]:+.3f},{pose[2]:+.3f}) samples={len(samples)}")
@@ -82,7 +83,7 @@ def main() -> None:
     try:
         res = solve_pivot(np.asarray(samples).reshape(-1, 7))
     except ValueError as exc:
-        print(f"[pivot] not saved: {exc}. Hold the trigger the whole time while rotating.")
+        print(f"[pivot] not saved: {exc}. Press B/Y, then rotate the hand for 20-30 s before A/X.")
         return
     r = res["offset_ctrl_m"]
     print(f"[pivot] {args.side}: offset=({r[0]:+.4f}, {r[1]:+.4f}, {r[2]:+.4f}) m |r|={res['offset_norm_m'] * 100:.1f} cm "

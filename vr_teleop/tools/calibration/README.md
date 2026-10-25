@@ -14,7 +14,7 @@
 
 ```bash
 cd /workspace/DexVerse && source /workspace/dexverse_env.sh          # VR_TELEOP_CALIB 설정됨
-# 1) 피벗: 손목을 책상 모서리에 고정, 반대 손으로 그 컨트롤러 트리거를 누른 채 20~30초 꺾고 비틀기 → A
+# 1) 피벗: 손목을 책상 모서리에 고정, B/Y로 기록 시작 → 20~30초 꺾고 비틀기 → A/X (기록 종료·계산·저장)
 scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_pivot.py --side right
 # 2) 회전: AR(패스스루)로 접속, 실제 손을 초록 손에 겹치고 노란 점을 초록 큰 점에 → A (0.5초 정지) → 확인 → B 2초 종료
 scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_rotation.py --side right
