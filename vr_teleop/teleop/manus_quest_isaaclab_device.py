@@ -73,7 +73,6 @@ class ManusDevice(DeviceBase):
         self._started = False
         self._pending_start = 0
         self._last_log = 0.0
-        self._last_ghost = 0.0
 
         self._calib = MountCalibrationFile(cfg.calibration_json) if cfg.calibration_json else None
         self._ctrl = HandMountedController()
@@ -287,14 +286,6 @@ class ManusDevice(DeviceBase):
             self._started = True
             self._request_start()
         now = time.monotonic()
-        if self._quest is not None and self.cfg.controller_model_opacity < 1.0 and now - self._last_ghost > 2.0:
-            self._last_ghost = now
-            try:
-                for path in self._quest.set_controller_model_opacity(self.cfg.controller_model_opacity):
-                    print(f"[vr_teleop] controller model see-through (opacity {self.cfg.controller_model_opacity}): {path}")
-            except Exception as exc:  # noqa: BLE001 - cosmetic, never stop teleop for it
-                print(f"[vr_teleop] controller model opacity not applied ({type(exc).__name__}: {exc})")
-                self.cfg.controller_model_opacity = 1.0
         if self.cfg.log_every_s and now - self._last_log > self.cfg.log_every_s:
             self._last_log = now
             lost = ", ".join(f"{s} lost {n}x" for s, n in self._lost_count.items() if n)
@@ -320,7 +311,6 @@ class ManusDeviceCfg(DeviceCfg):
     log_every_s: float = 5.0
     controller_trace: str | None = None  # CSV of every new controller pose (diagnosis)
     lost_frames: int = 3  # new controller poses with a frozen position before the wrist is held
-    controller_model_opacity: float = 0.1  # Quest controller models drawn by the XR app: 1 as is, 0 hidden
     xr_cfg: Any = None  # isaaclab XrCfg; set in a VR session
     retargeters: list = field(default_factory=list)
     class_type: type[DeviceBase] = ManusDevice

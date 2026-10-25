@@ -19,7 +19,6 @@ import numpy as np
 from ...common.openxr_hand import SIDES
 
 BUTTONS = {"trigger": 2, "squeeze": 3, "primary": 4, "secondary": 5}  # primary = A / X, secondary = B / Y
-XR_CONTROLLER_GUI = "/_xr/gui/controllers"  # where omni.kit.xr.ui.stage loads the controller models
 
 
 def request_ar_session(simulation_app, num_updates: int = 10) -> bool:
@@ -76,8 +75,6 @@ class QuestXR:
         self._controller = {"right": DeviceBase.TrackingTarget.CONTROLLER_RIGHT, "left": DeviceBase.TrackingTarget.CONTROLLER_LEFT}
         self._hand = {"right": DeviceBase.TrackingTarget.HAND_RIGHT, "left": DeviceBase.TrackingTarget.HAND_LEFT}
         self._data: dict = {}
-        self._ghosted: set[str] = set()  # controller model prims made see-through
-        self._ghost_listed, self._ghost_misses = False, 0
 
     def poll(self) -> None:
         """Read the latest XR data; call once per frame before the getters."""
@@ -107,54 +104,6 @@ class QuestXR:
         anchor = SingleXFormPrim(self.device._xr_anchor_headset_path)
         pos, rot = anchor.get_world_pose()
         anchor.set_world_pose(position=np.asarray(pos, dtype=np.float64) + delta, orientation=rot)
-
-    def set_controller_model_opacity(self, opacity: float) -> list[str]:
-        """Make the controller models Isaac Sim's XR draws at the controllers see-through (0 hides them, 1 leaves
-        them). They load when the headset reports a controller, and again on a model change, so call this
-        periodically; it returns the model prims it changed this time."""
-        import carb
-        import isaaclab.sim as sim_utils
-        from pxr import Usd
-
-        if opacity <= 0.0:
-            settings = carb.settings.get_settings()
-            for root in ("/persistent/xr", "/xr"):
-                for profile in ("ar", "vr"):
-                    settings.set_bool(f"{root}/profile/{profile}/controllers/visible", False)
-            return []
-        stage = sim_utils.get_current_stage()
-        material = "/Visuals/vr_teleop_controller_ghost"
-        if not stage.GetPrimAtPath(material).IsValid():
-            cfg = sim_utils.PreviewSurfaceCfg(diffuse_color=(0.85, 0.85, 0.9), opacity=float(opacity))
-            cfg.func(material, cfg)
-        root = stage.GetPrimAtPath(XR_CONTROLLER_GUI)  # the XR app's controller GUI layer
-        if not root.IsValid():
-            self._ghost_misses += 1
-            if self._ghost_misses == 15:  # ~30 s of calls without the layer: show what is there
-                xr = stage.GetPrimAtPath("/_xr")
-                print(f"[quest] no {XR_CONTROLLER_GUI}; /_xr has "
-                      f"{[p.GetPath().pathString for p in Usd.PrimRange(xr)][:40] if xr.IsValid() else 'nothing'}")
-            return []
-        models = [p for p in Usd.PrimRange(root, Usd.TraverseInstanceProxies())
-                  if p.GetName() == "Model" and p.GetParent().GetName() == "Root"]
-        if not self._ghost_listed and models:
-            self._ghost_listed = True
-            print(f"[quest] controller GUI prims: {[p.GetPath().pathString for p in Usd.PrimRange(root)][:40]}")
-        changed = []
-        for model in models:
-            path = model.GetPath().pathString
-            if path in self._ghosted:
-                continue
-            # A material binding cannot be authored inside an instance: make the instancing prim a plain one.
-            prim = model
-            while prim.IsInstanceProxy():
-                prim = prim.GetParent()
-                if prim.IsInstance():
-                    prim.SetInstanceable(False)
-            sim_utils.bind_visual_material(path, material, stage=stage, stronger_than_descendants=True)
-            self._ghosted.add(path)
-            changed.append(path)
-        return changed
 
     def add_callback(self, key: str, func: Callable) -> None:
         """Headset menu commands: ``"START"``, ``"STOP"``, ``"RESET"``."""
