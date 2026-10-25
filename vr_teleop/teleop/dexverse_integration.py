@@ -146,3 +146,42 @@ def add_manus_device_from_env(devices_cfg, use_xr: bool) -> None:
         auto_start=env.get("VR_TELEOP_AUTO_START", "0") == "1",
         controller_trace=env.get("VR_TELEOP_TRACE") or None,
     )
+
+
+def show_goal_marker(env_cfg) -> None:
+    """Show the goal sphere (red -> green as the tilt condition is met) in the DexVerse pour-style tasks.
+
+    DexVerse v1 baselines show it by default; the v0 task configs turn it off (``pour_show_progress_marker`` and
+    ``enable_debug_vis`` are False). This adds the same observation-term visual the config would add with both on,
+    to an already built env cfg. Tasks without that marker (no ``pour_show_progress_marker``) are left as they are.
+    """
+    if not hasattr(env_cfg, "pour_show_progress_marker") or getattr(env_cfg.scene, "success_marker", None) is None:
+        return
+    if env_cfg.observations.scene_vis is not None and hasattr(env_cfg.observations.scene_vis, "pour_progress_marker_vis"):
+        return
+    from dexverse.tasks import dexverse_base_env_cfg as base
+    from dexverse.tasks import mdp
+    from isaaclab.managers import ObservationTermCfg as ObsTerm
+    from isaaclab.managers import SceneEntityCfg
+
+    if env_cfg.observations.scene_vis is None:
+        env_cfg.observations.scene_vis = base.ObservationsCfg.SceneVisObsCfg()
+    env_cfg.observations.scene_vis.pour_progress_marker_vis = ObsTerm(
+        func=mdp.pour_progress_marker_vis,
+        params={
+            "goal_asset_cfg": SceneEntityCfg("success_marker"),
+            "object_cfg": SceneEntityCfg("object"),
+            "primary_threshold_rad": env_cfg.pour_angle_rad,
+            "primary_axis_local": env_cfg.pour_axis_local,
+            "primary_world_axis": env_cfg.pour_world_axis,
+            "primary_tilt_ge": env_cfg.pour_tilt_ge,
+            "plane_threshold_rad": env_cfg.pour_plane_angle_threshold_rad,
+            "plane_axis_local": env_cfg.pour_plane_axis_local,
+            "plane_normal": env_cfg.pour_plane_normal,
+            "radius": env_cfg.pour_progress_marker_radius,
+            "opacity": env_cfg.pour_progress_marker_opacity,
+            "num_color_steps": env_cfg.pour_progress_marker_num_color_steps,
+            "prim_path_prefix": "/Visuals/PourProgressMarker",
+        },
+    )
+    print("[vr_teleop] goal marker on (sphere at the goal, red -> green as the tilt condition is met)")

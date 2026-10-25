@@ -113,6 +113,7 @@ class ManusDevice(DeviceBase):
 
     def reset(self) -> None:
         self._started = False
+        self._pending_start = 0  # a START requested before the reset must not start the next episode
         if self._quest is not None:
             self._quest.reset()
 
