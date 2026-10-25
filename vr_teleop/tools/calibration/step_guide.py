@@ -31,7 +31,7 @@ class StepGuide:
     the headset panel. The panel is rebuilt only per step (placed in front of the headset at that moment);
     ``status()`` changes its text in place. Panel errors only disable the panel."""
 
-    def __init__(self, tag: str, total: int, lang: str, head_pose=None):
+    def __init__(self, tag: str, total: int, lang: str, head_pose=None, place=(1.5, 0.0, 0.32), font: float = 0.045):
         self.tag, self.total = tag, total
         self.korean = lang == "ko" and os.path.isfile(KOREAN_FONT)
         self._head_pose = head_pose  # callable -> headset pose [x, y, z, qw, qx, qy, qz] (zeros before connect)
@@ -39,6 +39,8 @@ class StepGuide:
         self._head: list[str] = []
         self._container = None
         self._label = None
+        self._place = place  # panel position from the headset: (forward, right, up) m, forward/right horizontal
+        self._FONT = font
 
     def step(self, n: int, title: str, lines: tuple[str, ...] = (), en: str = "") -> None:
         print(f"\n[{self.tag}] ===== {n}/{self.total} {title} =====", *(f"[{self.tag}]   {line}" for line in lines),
@@ -74,7 +76,7 @@ class StepGuide:
             self._panel, self._label = False, None
             print(f"[{self.tag}]   (headset panel disabled: {type(exc).__name__}: {exc})", flush=True)
 
-    _FONT, _MAX_W = 0.045, 1.3  # panel font height and text width (m)
+    _MAX_W = 1.3  # panel text width (m)
 
     def _width(self, line: str) -> float:  # Hangul is about 1 em wide, Latin about 0.55 em
         return sum(1.0 if ord(c) > 0x2E80 else 0.55 for c in line) * self._FONT
@@ -107,7 +109,9 @@ class StepGuide:
         fwd = -rot_from_wxyz(head[3:])[:, 2]
         fwd[2] = 0.0
         fwd /= max(np.linalg.norm(fwd), 1e-6)
-        pos = head[:3] + 1.5 * fwd + np.array([0.0, 0.0, 0.32])  # above the work area, so it does not cover the hands
+        right = np.array([fwd[1], -fwd[0], 0.0])
+        f, r, u = self._place  # default: above the work area, so it does not cover the hands
+        pos = head[:3] + f * fwd + r * right + np.array([0.0, 0.0, u])
         text = self._wrap([*self._head, ""])  # one spare line for status()
         n_lines = text.count("\n") + 1
         w = max(min(max(self._width(line) for line in text.split("\n")), self._MAX_W) + 2 * self._FONT, 0.6)

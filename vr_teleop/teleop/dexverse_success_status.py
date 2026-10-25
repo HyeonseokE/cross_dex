@@ -164,7 +164,8 @@ class RecordPanel:
         from vr_teleop.tools.calibration.step_guide import StepGuide
 
         self._recorder, self._target = recorder, int(target)
-        self._panel = StepGuide("rec", 0, "en", head_pose=head_pose)
+        # Up and to the left, smaller: the XR client's START / STOP / RESET panel sits in front of the operator.
+        self._panel = StepGuide("rec", 0, "en", head_pose=head_pose, place=(1.4, -0.75, 0.55), font=0.035)
         self._last_try = 0.0
 
     def retry(self) -> None:
