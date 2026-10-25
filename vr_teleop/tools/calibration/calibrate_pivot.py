@@ -55,9 +55,9 @@ HAND = {"right": ("오른", "B", "A"), "left": ("왼", "Y", "X")}
 
 def main() -> None:
     hand, start_btn, end_btn = HAND[args.side]
-    guide = StepGuide("피벗", 4, args.panel_lang)
     sim = SimulationContext(SimulationCfg(dt=1 / 90))
     quest = QuestXR(controllers=True)
+    guide = StepGuide("피벗", 4, args.panel_lang, head_pose=quest.head)
     sim.reset()
     request_ar_session(simulation_app)
     tracked = TrackedPose()

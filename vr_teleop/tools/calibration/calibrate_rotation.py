@@ -106,7 +106,6 @@ GOOD_DIST_CM, GOOD_SPREAD_DEG = 3.0, 3.0  # wrist-to-target distance / hand moti
 
 def main() -> None:
     hand, start_btn, end_btn = HAND[args.side]
-    guide = StepGuide("회전", 4, args.panel_lang)
     calib = MountCalibrationFile(args.calib)
     if args.side not in calib.data:
         raise SystemExit(f"[회전] {args.calib}에 {hand}손 피벗 값이 없습니다: calibrate_pivot.py를 먼저 하세요")
@@ -116,6 +115,7 @@ def main() -> None:
     sim = SimulationContext(SimulationCfg(dt=1 / 90))
     setup_scene()
     quest = QuestXR(controllers=True)
+    guide = StepGuide("회전", 4, args.panel_lang, head_pose=quest.head)
     green = (0.1, 0.9, 0.2)
     target_skel = spheres("/Visuals/calib_target_hand", {"joint": (green, 0.007), "bone": (green, 0.003)})
     target_wrist = spheres("/Visuals/calib_target_wrist", {"wrist": (green, 0.02)})
