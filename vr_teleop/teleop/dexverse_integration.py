@@ -12,6 +12,7 @@
       VR_TELEOP_CALIBRATE_ROTATION=1                  save the controller-to-hand rotation on START
       VR_TELEOP_FINGERS=bench2dex|dexverse            (default bench2dex)
       VR_TELEOP_AUTO_START=1                          start on the first glove frame (default: headset START)
+      VR_TELEOP_TRACE=<csv>                           write every new controller pose (diagnosis)
 """
 
 from __future__ import annotations
@@ -120,4 +121,5 @@ def add_manus_device_from_env(devices_cfg, use_xr: bool) -> None:
         calibrate_rotation=env.get("VR_TELEOP_CALIBRATE_ROTATION", "0") == "1",
         # The robot moves only after the headset START, so the operator can align the hand first.
         auto_start=env.get("VR_TELEOP_AUTO_START", "0") == "1",
+        controller_trace=env.get("VR_TELEOP_TRACE") or None,
     )

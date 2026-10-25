@@ -20,6 +20,9 @@ mkdir -p "${LOG_DIR}"
 export VR_TELEOP_WRIST=${VR_TELEOP_WRIST:-controller}
 : "${VR_TELEOP_CALIB:?set VR_TELEOP_CALIB to the calibration json (see vr_teleop/tools/calibration)}"
 export VR_TELEOP_CALIB
+STAMP=$(date +%H%M%S)
+export VR_TELEOP_TRACE=${VR_TELEOP_TRACE-${LOG_DIR}/controller_${STAMP}.csv}
+export PYTHONUNBUFFERED=1  # the log goes through tee: print immediately
 
 if ! (exec 3<>/dev/tcp/127.0.0.1/${VR_TELEOP_BRIDGE_PORT:-47000}) 2>/dev/null; then
     echo "[session] starting the Manus bridge (log ${LOG_DIR}/manus_bridge.log)"
@@ -35,7 +38,7 @@ case "${MODE}" in
     record) SCRIPT=record_demos; has_arg --record_state || ARGS+=(--record_state) ;;
     *) echo "unknown mode '${MODE}' (teleop | record)" >&2; exit 1 ;;
 esac
-echo "[session] ${SCRIPT} wrist=${VR_TELEOP_WRIST} calib=${VR_TELEOP_CALIB} log=${LOG_DIR}/${SCRIPT}_$(date +%H%M%S).log"
+echo "[session] ${SCRIPT} wrist=${VR_TELEOP_WRIST} calib=${VR_TELEOP_CALIB} log=${LOG_DIR}/${SCRIPT}_${STAMP}.log trace=${VR_TELEOP_TRACE}"
 cd "${DEXVERSE_ROOT}"
 "${DEXVERSE_ROOT}/scripts/teleop_tools/run_teleop.sh" "${SCRIPT}" --teleop_device manus "${ARGS[@]}" \
-    2>&1 | tee "${LOG_DIR}/${SCRIPT}_$(date +%H%M%S).log"
+    2>&1 | tee "${LOG_DIR}/${SCRIPT}_${STAMP}.log"

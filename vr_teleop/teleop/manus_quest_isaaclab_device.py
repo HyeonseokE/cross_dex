@@ -63,6 +63,12 @@ class ManusDevice(DeviceBase):
         self._frozen = {side: 0 for side in SIDES}  # consecutive new poses with a frozen position
         self._lost_since: dict[str, float] = {}  # side -> time the controller position was lost
         self._lost_count = {side: 0 for side in SIDES}
+        self._trace = None
+        self._trace_prev: dict[str, np.ndarray] = {}
+        if cfg.controller_trace:
+            self._trace = open(cfg.controller_trace, "a", buffering=1)
+            self._trace.write("t,side,x,y,z,qw,qx,qy,qz,lost,wrist_x,wrist_y,wrist_z\n")
+            print(f"[vr_teleop] controller trace: {cfg.controller_trace}")
         self._started = False
         self._pending_start = 0
         self._last_log = 0.0
@@ -188,9 +194,16 @@ class ManusDevice(DeviceBase):
                 pose, newly = ctrl[0], not self._tracked[side].tracked
                 if not self._tracked[side].update(pose):
                     continue
-                if self._position_lost(side, pose):
+                lost = self._position_lost(side, pose)
+                if not lost:
+                    self._wrist[side] = self._ctrl.wrist(side, pose)
+                if self._trace is not None and not np.array_equal(pose, self._trace_prev.get(side)):
+                    self._trace_prev[side] = pose.copy()
+                    wrist = self._wrist[side][0] if side in self._wrist else np.full(3, np.nan)
+                    self._trace.write(f"{time.monotonic():.4f},{side}," + ",".join(f"{v:.6f}" for v in pose)
+                                      + f",{int(lost)}," + ",".join(f"{v:.5f}" for v in wrist) + "\n")
+                if lost:
                     continue  # hold the last wrist pose
-                self._wrist[side] = self._ctrl.wrist(side, pose)
                 if newly:
                     print(f"[vr_teleop] {side} controller tracked at {np.round(pose[:3], 3).tolist()}")
                     if self._started:
@@ -279,6 +292,7 @@ class ManusDeviceCfg(DeviceCfg):
     wrist_pos: tuple[float, float, float] = (0.0, 0.0, 0.0)  # "fixed" mode wrist position
     left_offset: tuple[float, float, float] = (0.0, 0.3, 0.0)  # "fixed" mode left-hand offset
     log_every_s: float = 5.0
+    controller_trace: str | None = None  # CSV of every new controller pose (diagnosis)
     lost_frames: int = 3  # new controller poses with a frozen position before the wrist is held
     xr_cfg: Any = None  # isaaclab XrCfg; set in a VR session
     retargeters: list = field(default_factory=list)
