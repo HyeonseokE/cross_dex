@@ -53,6 +53,7 @@ class ManusSource:
         self.connected = False
         self.gloves = {}        # glove id → {"side", "kp" (25,3), "ergo" [20], "t", "n"}
         self._nodeinfo = {}     # glove id → [(webxr index or None) per node]
+        self.battery = {}       # glove id → 배터리 % (landscape 스트림)
         self._lib = self._ffi = None
 
     # --- lifecycle
@@ -85,6 +86,7 @@ class ManusSource:
         atexit.register(lambda: lib.CoreSdk_ShutDown())
         self._sdk.register_raw_skeleton_callback(self._on_raw)
         self._sdk.register_ergonomics_callback(self._on_ergo)
+        self._sdk.register_landscape_callback(self._on_landscape)
         cs = ffi.new("CoordinateSystemVUH*")
         cs.view, cs.up, cs.handedness, cs.unitScale = (AxisView.XFromViewer, AxisPolarity.PositiveZ,
                                                        Side.Right, 1.0)
@@ -161,6 +163,11 @@ class ManusSource:
             with self._lock:
                 g = self.gloves.setdefault(d.id, {"side": None, "kp": None, "t": 0.0, "n": 0})
                 g["ergo_all"] = vals
+
+    def _on_landscape(self, landscape):
+        d = landscape.gloveDevices
+        with self._lock:
+            self.battery = {d.gloves[i].id: int(d.gloves[i].batteryPercentage) for i in range(d.gloveCount)}
 
     # --- reader
     def latest(self, prefer: str = "right"):
