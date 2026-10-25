@@ -40,6 +40,7 @@ from .hand_mounted_controller import HandMountedController
 
 _TARGET = {"right": DeviceBase.TrackingTarget.HAND_RIGHT, "left": DeviceBase.TrackingTarget.HAND_LEFT}
 _START_DELAY_FRAMES = 3  # frames between moving / re-orienting the wrist and the retargeter calibration
+_FROZEN_POS_M = 1e-6  # a tracked controller position always jitters more than this between new poses
 
 
 class ManusDevice(DeviceBase):
@@ -58,6 +59,10 @@ class ManusDevice(DeviceBase):
         self._seen = {side: False for side in SIDES}  # glove data received
         self._wrist: dict[str, tuple[np.ndarray, np.ndarray]] = {}  # tracked wrist: position, OpenXR frame
         self._tracked: dict = {}
+        self._ctrl_prev: dict[str, np.ndarray] = {}  # last raw controller pose
+        self._frozen = {side: 0 for side in SIDES}  # consecutive new poses with a frozen position
+        self._lost_since: dict[str, float] = {}  # side -> time the controller position was lost
+        self._lost_count = {side: 0 for side in SIDES}
         self._started = False
         self._pending_start = 0
         self._last_log = 0.0
@@ -183,6 +188,8 @@ class ManusDevice(DeviceBase):
                 pose, newly = ctrl[0], not self._tracked[side].tracked
                 if not self._tracked[side].update(pose):
                     continue
+                if self._position_lost(side, pose):
+                    continue  # hold the last wrist pose
                 self._wrist[side] = self._ctrl.wrist(side, pose)
                 if newly:
                     print(f"[vr_teleop] {side} controller tracked at {np.round(pose[:3], 3).tolist()}")
@@ -198,6 +205,29 @@ class ManusDevice(DeviceBase):
                     self._wrist[side] = (pose[:3], rot_from_wxyz(pose[3:]))
                     if newly:
                         print(f"[vr_teleop] {side} hand tracked by the headset at {np.round(pose[:3], 3).tolist()}")
+
+    def _position_lost(self, side: str, pose: np.ndarray) -> bool:
+        """True while the controller is not seen by the headset cameras: the runtime then keeps updating the
+        orientation (IMU) but freezes the position, which would swing the wrist about the controller."""
+        prev = self._ctrl_prev.get(side)
+        self._ctrl_prev[side] = pose.copy()
+        if prev is None or np.array_equal(prev, pose):
+            return side in self._lost_since  # no new pose this frame
+        frozen = np.abs(pose[:3] - prev[:3]).max() < _FROZEN_POS_M
+        self._frozen[side] = self._frozen[side] + 1 if frozen else 0
+        lost = self._frozen[side] >= self.cfg.lost_frames
+        if lost and side not in self._lost_since:
+            self._lost_since[side] = time.monotonic()
+            self._lost_count[side] += 1
+            print(f"[vr_teleop] WARNING {side} controller position lost (out of the headset cameras' view?): "
+                  "holding the robot wrist")
+        elif not lost and side in self._lost_since:
+            held = time.monotonic() - self._lost_since.pop(side)
+            jump = 0.0
+            if side in self._wrist:
+                jump = np.linalg.norm(self._ctrl.wrist(side, pose)[0] - self._wrist[side][0]) * 100
+            print(f"[vr_teleop] {side} controller position back after {held:.1f} s (wrist moved {jump:.1f} cm meanwhile)")
+        return lost
 
     # ------------------------------------------------------------------ DeviceBase
 
@@ -228,7 +258,8 @@ class ManusDevice(DeviceBase):
         now = time.monotonic()
         if self.cfg.log_every_s and now - self._last_log > self.cfg.log_every_s:
             self._last_log = now
-            print(f"[vr_teleop] {self._glove.status()}")
+            lost = ", ".join(f"{s} lost {n}x" for s, n in self._lost_count.items() if n)
+            print(f"[vr_teleop] {self._glove.status()}" + (f" | controller position {lost}" if lost else ""))
         return {target: self._last[side] for side, target in _TARGET.items()}
 
 
@@ -248,6 +279,7 @@ class ManusDeviceCfg(DeviceCfg):
     wrist_pos: tuple[float, float, float] = (0.0, 0.0, 0.0)  # "fixed" mode wrist position
     left_offset: tuple[float, float, float] = (0.0, 0.3, 0.0)  # "fixed" mode left-hand offset
     log_every_s: float = 5.0
+    lost_frames: int = 3  # new controller poses with a frozen position before the wrist is held
     xr_cfg: Any = None  # isaaclab XrCfg; set in a VR session
     retargeters: list = field(default_factory=list)
     class_type: type[DeviceBase] = ManusDevice
