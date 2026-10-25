@@ -94,12 +94,21 @@ def setup_scene() -> None:
     sim_utils.DistantLightCfg(intensity=3000.0).func("/World/light", sim_utils.DistantLightCfg(intensity=3000.0))
 
 
+HAND = {"right": ("오른", "B", "A"), "left": ("왼", "Y", "X")}
+GOOD_DIST_CM, GOOD_SPREAD_DEG = 3.0, 3.0  # wrist-to-target distance / hand motion while capturing
+
+
+def step(n: int, title: str, *lines: str) -> None:
+    print(f"\n[회전] ===== {n}/4 {title} =====", *(f"[회전]   {line}" for line in lines), sep="\n", flush=True)
+
+
 def main() -> None:
+    hand, start_btn, end_btn = HAND[args.side]
     calib = MountCalibrationFile(args.calib)
     if args.side not in calib.data:
-        raise SystemExit(f"{args.calib} has no '{args.side}' entry: run calibrate_pivot.py for this hand first")
+        raise SystemExit(f"[회전] {args.calib}에 {hand}손 피벗 값이 없습니다: calibrate_pivot.py를 먼저 하세요")
     mounted = HandMountedController(offsets={args.side: calib.offset(args.side)})  # mount rotation: identity
-    print(f"[rot] {args.side}: pivot offset {np.round(mounted.offset[args.side], 4).tolist()} m")
+    print(f"[회전] {hand}손 피벗 오프셋 {np.round(mounted.offset[args.side], 4).tolist()} m 사용")
 
     sim = SimulationContext(SimulationCfg(dt=1 / 90))
     setup_scene()
@@ -115,9 +124,9 @@ def main() -> None:
     tracked = TrackedPose()
     template = flat_hand_template(args.side)
     target, capture = None, []
-    a_prev, b_prev, frame = False, False, 0
-    print("[rot] B/Y: place the green target hand in front of you. Put your hand on it (yellow sphere on the "
-          "green wrist), then A/X and hold still 0.5 s: saves and quits.")
+    ready, a_prev, b_prev, frame = False, False, False, 0
+    step(1, "헤드셋 연결", "헤드셋을 쓰고 Quest 브라우저에서 Disconnect → Connect → AR(패스스루)로 접속",
+         f"{hand}쪽 컨트롤러가 잡히면 다음 단계로 넘어갑니다.")
     while simulation_app.is_running():
         simulation_app.update()
         frame += 1
@@ -125,16 +134,24 @@ def main() -> None:
         ctrl = quest.controller(args.side)
         if ctrl is None or not tracked.update(ctrl[0]):
             if frame % 270 == 0:
-                print(f"[rot] waiting for the {args.side} controller (connect the headset in controller mode)")
+                print(f"[회전]   ... {hand}쪽 컨트롤러 대기 중 (헤드셋 접속 확인)", flush=True)
             continue
+        if not ready:
+            ready = True
+            step(2, "목표 손 표시", "노란 점 = 내 손목.", f"{start_btn}를 한 번 누르면 내 앞에 초록 손(손바닥 아래, 손가락 앞)이 나타납니다.")
         pose, inputs = ctrl
         wrist_pos, _ = mounted.wrist(args.side, pose)
         live_wrist.visualize(translations=wrist_pos[None])
 
         b_now = inputs[BUTTONS["secondary"]] > 0.5
         if b_now and not b_prev and np.any(quest.head()[:3]):
+            if target is None:
+                step(3, "손 맞추기", f"실제 {hand}손을 초록 손에 겹치고, 노란 점을 초록 큰 점에 맞추세요.",
+                     f"맞으면 {end_btn}를 한 번 누르고 0.5초 동안 움직이지 마세요 → 저장 후 바로 종료.",
+                     f"{start_btn}: 초록 손을 지금 보는 방향 앞으로 다시 놓기")
+            else:
+                print("[회전]   초록 손을 다시 놓았습니다.", flush=True)
             target = place_target(quest.head())
-            print(f"[rot] target placed at {np.round(target[0], 3).tolist()}")
         b_prev = b_now
         if target is None:
             a_prev = inputs[BUTTONS["primary"]] > 0.5
@@ -144,12 +161,12 @@ def main() -> None:
         target_wrist.visualize(translations=target[0][None])
         draw_dotted_axes(target_axes, target[0], target[1])
         if frame % 90 == 0 and not capture:
-            print(f"[rot] wrist to target wrist: {np.linalg.norm(wrist_pos - target[0]) * 100:.1f} cm")
+            print(f"[회전]   손목 ↔ 초록 손목 거리 {np.linalg.norm(wrist_pos - target[0]) * 100:.1f} cm", flush=True)
 
         a_now = inputs[BUTTONS["primary"]] > 0.5
         if a_now and not a_prev and not capture:
             capture = [mounted.ctrl_rot[args.side]]
-            print("[rot] capturing, hold still ...")
+            step(4, "캡처 · 저장", "움직이지 마세요 (0.5초) ...")
         elif capture:
             capture.append(mounted.ctrl_rot[args.side])
             if len(capture) >= CAPTURE_FRAMES:
@@ -159,9 +176,16 @@ def main() -> None:
                 calib = MountCalibrationFile(args.calib)
                 calib.set_mount_rot(args.side, rot, "calibrate_rotation.py (target hand: palm down, fingers forward)")
                 calib.save()
-                print(f"[rot] saved controller->hand rotation to {calib.path} ({angle_deg(rot):.0f} deg; wrist "
-                      f"{np.linalg.norm(wrist_pos - target[0]) * 100:.1f} cm from the target, hand moved up to "
-                      f"{spread:.1f} deg while capturing)")
+                dist = np.linalg.norm(wrist_pos - target[0]) * 100
+                ok = dist <= GOOD_DIST_CM and spread <= GOOD_SPREAD_DEG
+                print(f"[회전]   컨트롤러 → 손 회전: {angle_deg(rot):.0f}°",
+                      f"[회전]   손목 ↔ 초록 손목 거리 {dist:.1f} cm (기준 {GOOD_DIST_CM:.0f} cm 이하) → "
+                      f"{'OK' if dist <= GOOD_DIST_CM else '멀다: 노란 점을 초록 큰 점에 더 가깝게'}",
+                      f"[회전]   캡처 중 손 움직임 {spread:.1f}° (기준 {GOOD_SPREAD_DEG:.0f}° 이하) → "
+                      f"{'OK' if spread <= GOOD_SPREAD_DEG else '흔들림: 더 가만히'}",
+                      f"[회전]   저장: {calib.path}",
+                      f"[회전]   결과: {'정상' if ok else '저장은 했지만 다시 하는 것을 권장'} — 결과는 텔레옵에서 확인하세요.",
+                      sep="\n", flush=True)
                 break
         a_prev = a_now
 
