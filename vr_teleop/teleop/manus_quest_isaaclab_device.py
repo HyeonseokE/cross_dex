@@ -320,7 +320,7 @@ class ManusDeviceCfg(DeviceCfg):
     log_every_s: float = 5.0
     controller_trace: str | None = None  # CSV of every new controller pose (diagnosis)
     lost_frames: int = 3  # new controller poses with a frozen position before the wrist is held
-    controller_model_opacity: float = 0.25  # Quest controller models drawn by the XR app: 1 as is, 0 hidden
+    controller_model_opacity: float = 0.1  # Quest controller models drawn by the XR app: 1 as is, 0 hidden
     xr_cfg: Any = None  # isaaclab XrCfg; set in a VR session
     retargeters: list = field(default_factory=list)
     class_type: type[DeviceBase] = ManusDevice
