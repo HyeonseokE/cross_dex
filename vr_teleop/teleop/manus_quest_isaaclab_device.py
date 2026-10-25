@@ -65,7 +65,7 @@ class ManusDevice(DeviceBase):
         self._lost_count = {side: 0 for side in SIDES}
         self._trace = None
         self._trace_prev: dict[str, np.ndarray] = {}
-        self._mark_prev = False
+        self._mark_prev = {side: False for side in SIDES}
         if cfg.controller_trace:
             self._trace = open(cfg.controller_trace, "a", buffering=1)
             self._trace.write("t,side,x,y,z,qw,qx,qy,qz,lost,wrist_x,wrist_y,wrist_z,mark,robot_x,robot_y,robot_z,robot_qw,robot_qx,robot_qy,robot_qz\n")
@@ -223,9 +223,9 @@ class ManusDevice(DeviceBase):
         from ..devices.metaquest.quest_openxr_isaaclab import BUTTONS
 
         mark = bool(inputs[BUTTONS["secondary"]] > 0.5)
-        if mark and not self._mark_prev:
+        if mark and not self._mark_prev[side]:
             print(f"[vr_teleop] MARK {time.strftime('%H:%M:%S')} ({side} B/Y)")
-        new_mark, self._mark_prev = mark and not self._mark_prev, mark
+        new_mark, self._mark_prev[side] = mark and not self._mark_prev[side], mark
         if np.array_equal(pose, self._trace_prev.get(side)) and not new_mark:
             return
         self._trace_prev[side] = pose.copy()
