@@ -16,11 +16,11 @@
 cd /workspace/DexVerse && source /workspace/dexverse_env.sh          # VR_TELEOP_CALIB 설정됨
 # 1) 피벗: 손목을 책상 모서리에 고정, B/Y로 기록 시작 → 20~30초 꺾고 비틀기 → A/X (기록 종료·계산·저장)
 scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_pivot.py --side right
-# 2) 회전: AR(패스스루)로 접속, 실제 손을 초록 손에 겹치고 노란 점을 초록 큰 점에 → A (0.5초 정지) → 확인 → B 2초 종료
+# 2) 회전: AR(패스스루)로 접속, B/Y로 초록 손 표시 → 실제 손을 겹치고 노란 점을 초록 큰 점에 → A/X (0.5초 정지, 저장 후 종료)
 scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_rotation.py --side right
 ```
 
-판정: 피벗 RMS 5 mm 이하·가장 좁은 회전 범위 30° 이상, 회전은 저장 후 `hand vs target rotation`이 몇 도 이내.
+판정: 피벗 RMS 5 mm 이하·가장 좁은 회전 범위 30° 이상, 회전은 저장 로그의 손목-목표 거리가 몇 cm 이내·캡처 중 손 움직임(`hand moved up to`)이 몇 도 이내.
 
 ## JSON 형식
 
@@ -35,6 +35,6 @@ scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibra
 ## 알아 둘 것
 
 - 피벗만으로는 회전을 알 수 없다(손목을 고정한 조건에 회전 차이가 드러나지 않음). 그래서 회전은 별도로 잰다.
-- 회전 앱은 JSON에 이미 있는 회전값을 쓰지 않는다(이전 결과 위에 쌓이지 않게). 빨간 손은 이번 캡처 뒤에만 보인다.
+- 회전 앱은 JSON에 이미 있는 회전값을 쓰지 않는다(이전 결과 위에 쌓이지 않게). 저장하면 바로 종료되므로, 결과는 텔레옵에서 확인한다.
 - 컨트롤러와 손 추적이 동시에 오지 않는 경로라, 손 추적으로 회전을 자동 측정하는 방식은 쓸 수 없다.
 - 피벗을 다시 재면(마운트를 다시 끼웠다면) 회전도 다시 잰다.

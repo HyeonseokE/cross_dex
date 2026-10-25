@@ -124,12 +124,12 @@ Quest: 손 추적을 꺼서 **컨트롤러 모드**로 두고, 오른쪽 컨트�
 ```bash
 # ① 피벗 (손목 위치): 손목을 책상 모서리에 고정, B로 기록 시작 → 20~30초 꺾고 비틀기 → A (기록 종료·계산·저장)
 scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_pivot.py --side right
-# ② 회전 (손 방향): AR(패스스루)로 접속 → 실제 손을 초록 손에 겹치고 노란 점을 초록 큰 점에 → A (0.5초 정지)
-#    → 빨간 손이 초록 손에 겹치는지 확인 → B 2초 눌러 종료
+# ② 회전 (손 방향): AR(패스스루)로 접속 → B로 초록 손 표시 → 실제 손을 초록 손에 겹치고 노란 점을 초록 큰 점에
+#    → A (0.5초 정지, 저장 후 바로 종료)
 scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibrate_rotation.py --side right
 ```
 결과는 `$VR_TELEOP_CALIB`(`.../calibration/current.json`)에 저장되고 이전 값은 `history/`로 백업된다.
-판정: 피벗 RMS 5 mm 이하, 회전은 저장 후 로그 `hand vs target rotation`이 몇 도 이내. 자세한 내용은 `tools/calibration/README.md`.
+판정: 피벗 RMS 5 mm 이하, 회전은 저장 로그의 손목-목표 거리가 몇 cm 이내·캡처 중 손 움직임이 몇 도 이내. 자세한 내용은 `tools/calibration/README.md`.
 
 ### 5. 텔레옵 / 녹화 (터미널 ②)
 
