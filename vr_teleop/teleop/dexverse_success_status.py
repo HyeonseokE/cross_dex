@@ -37,7 +37,7 @@ class SuccessStatus:
             "active_objects_lifted": self._two_items,
         }.get(name)
 
-    def text(self, hold: int, need: int) -> str:
+    def text(self, hold: int, need: int, sep: str = " | ") -> str:
         if self.func is None:
             return "no success condition"
         try:
@@ -45,7 +45,7 @@ class SuccessStatus:
         except Exception as exc:  # noqa: BLE001 - a display helper must not stop the recording
             parts = [f"status n/a ({type(exc).__name__})"]
             self._parts = None
-        return " | ".join([*parts, f"hold {hold}/{need}"])
+        return sep.join([*parts, f"hold {hold}/{need}"])
 
     # ------------------------------------------------------------------ helpers
     def _obj(self, cfg):
@@ -164,8 +164,10 @@ class RecordPanel:
         from vr_teleop.tools.calibration.step_guide import StepGuide
 
         self._recorder, self._target = recorder, int(target)
-        # Up and to the left: the XR client's START / STOP / RESET panel sits in front of the operator.
-        self._panel = StepGuide("rec", 0, "en", head_pose=head_pose, place=(1.4, -0.75, 0.55))
+        # Narrow and well to the left, a little up: the XR client's START / STOP / RESET panel sits in front of
+        # the operator (a 1.3 m wide panel centred 0.75 m left still reached the middle).
+        self._panel = StepGuide("rec", 0, "en", head_pose=head_pose, place=(1.4, -1.0, 0.4), max_width=0.7,
+                                spare_lines=6)
         self._last_try = 0.0
 
     def retry(self) -> None:
@@ -188,8 +190,8 @@ class RecordPanel:
         if detail is None:
             n = self._recorder.num_episodes + 1
             self._panel.show([f"REC  demo {n}" + (f" / {self._target}" if self._target > 0 else "")])
-        else:
-            self._panel.status(detail, en=detail, echo=False)
+        else:  # one gate per line, so the panel stays narrow
+            self._panel.status(detail.replace(" | ", "\n"), en=detail.replace(" | ", "\n"), echo=False)
 
     def stopped(self, mid_episode: bool) -> None:
         self._panel.show(["PAUSED mid-demo  |  START to resume" if mid_episode

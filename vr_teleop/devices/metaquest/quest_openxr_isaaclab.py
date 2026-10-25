@@ -75,6 +75,19 @@ class QuestXR:
         self._controller = {"right": DeviceBase.TrackingTarget.CONTROLLER_RIGHT, "left": DeviceBase.TrackingTarget.CONTROLLER_LEFT}
         self._hand = {"right": DeviceBase.TrackingTarget.HAND_RIGHT, "left": DeviceBase.TrackingTarget.HAND_LEFT}
         self._data: dict = {}
+        self._cmd_sub = None
+        try:  # log what the XR client sends (one button press can send several commands)
+            import carb
+            import time as _time
+            from omni.kit.xr.core import XRCore
+
+            def _log(event):
+                print(f"[quest] xr command {event.payload.get('message')!r} at {_time.strftime('%H:%M:%S')}", flush=True)
+
+            self._cmd_sub = XRCore.get_singleton().get_message_bus().create_subscription_to_pop_by_type(
+                carb.events.type_from_string(OpenXRDevice.TELEOP_COMMAND_EVENT_TYPE), _log)
+        except Exception as exc:  # noqa: BLE001 - diagnostics only
+            print(f"[quest] xr command log off ({type(exc).__name__}: {exc})")
 
     def poll(self) -> None:
         """Read the latest XR data; call once per frame before the getters."""
