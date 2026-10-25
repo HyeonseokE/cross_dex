@@ -72,7 +72,7 @@ source /workspace/dexverse_env.sh && cd /workspace/DexVerse
 5. 터미널 ② — **`dexverse_session.sh`를 직접 실행한다** (자동 실행되지 않는다. 글러브 전원을 켜는 것과 무관).
    이 스크립트가 ① Manus 브리지(글러브 → 프로그램)를 띄우고 ② 시뮬레이션(녹화/텔레옵)을 실행해 **글러브·컨트롤러·
    시뮬레이션을 연결한다**. 녹화는 `record`, 연습은 `teleop`:
-   `vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 20`
+   `vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 50`
 
 **접속과 시작**
 6. Quest 브라우저 `https://nvidia.github.io/IsaacTeleop/client` → 서버 IP, 포트 `48322` → Connect → **Enter VR**.
@@ -135,7 +135,7 @@ scripts/teleop_tools/run_teleop.sh vr_teleop/vr_teleop/tools/calibration/calibra
 
 ```bash
 vr_teleop/vr_teleop/tools/dexverse_session.sh teleop --task Dexverse-GraspCup-v1                  # 연습
-vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 20   # 녹화
+vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 50   # 녹화
 ```
 1. Quest로 Connect → **Enter VR**.
 2. 로봇은 **헤드셋 메뉴 START 전에는 움직이지 않는다**. 오른손을 책상에서 약 20 cm 띄우고 로봇 손 근처·같은 방향에

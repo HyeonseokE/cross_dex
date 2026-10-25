@@ -2,7 +2,7 @@
 # DexVerse teleop / recording with the Manus gloves + glove-mounted Quest controller, standard settings.
 #
 #   vr_teleop/tools/dexverse_session.sh teleop --task Dexverse-GraspCup-v1 [--robot_type floating_shadow_right]
-#   vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 20
+#   vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1 --num_demos 50
 #
 # Before: the CloudXR runtime is up (DexVerse scripts/teleop_tools/start_cloudxr_runtime.sh) and the glove
 # calibration exists ($VR_TELEOP_CALIB, see vr_teleop/tools/calibration). This script starts the Manus bridge
