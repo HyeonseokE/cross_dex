@@ -28,6 +28,7 @@ parser.add_argument("--side", choices=("right", "left"), required=True)
 parser.add_argument("--calib", default=os.environ.get("VR_TELEOP_CALIB"), help="calibration JSON (default $VR_TELEOP_CALIB)")
 parser.add_argument("--target_forward", type=float, default=0.35, help="target distance in front of the head (m)")
 parser.add_argument("--target_down", type=float, default=0.12, help="target height below the head (m)")
+parser.add_argument("--panel_lang", choices=("ko", "en"), default="ko", help="language of the headset guide panel")
 parser.add_argument("--no_passthrough", action="store_true", help="draw a ground and sky instead of a transparent background")
 # Accepted for DexVerse run_teleop.sh compatibility; unused here.
 parser.add_argument("--teleop_device", type=str, default=None, help=argparse.SUPPRESS)
@@ -37,6 +38,10 @@ args = parser.parse_args()
 if not args.calib:
     parser.error("--calib (or $VR_TELEOP_CALIB) is required")
 args.xr = True
+if args.panel_lang == "ko":
+    from vr_teleop.tools.calibration import step_guide
+
+    args.kit_args = f"{args.kit_args or ''} {step_guide.korean_font_kit_args(__file__)}".strip()
 simulation_app = AppLauncher(args).app
 
 import isaaclab.sim as sim_utils  # noqa: E402
@@ -49,6 +54,7 @@ from vr_teleop.common.rotation_utils import angle_deg, mean_rotation, rot_from_w
 from vr_teleop.devices.metaquest.quest_openxr_isaaclab import BUTTONS, QuestXR, TrackedPose, request_ar_session  # noqa: E402
 from vr_teleop.teleop.hand_mounted_controller import HandMountedController  # noqa: E402
 from vr_teleop.tools.calibration.mount_calibration import MountCalibrationFile, mount_rotation  # noqa: E402
+from vr_teleop.tools.calibration.step_guide import StepGuide  # noqa: E402
 
 CAPTURE_FRAMES = 45  # ~0.5 s at 90 Hz
 TARGET_AXIS_COLORS = ((1.0, 0.0, 1.0), (0.0, 0.9, 1.0), (1.0, 1.0, 1.0))  # X magenta, Y cyan, Z white
@@ -98,12 +104,9 @@ HAND = {"right": ("오른", "B", "A"), "left": ("왼", "Y", "X")}
 GOOD_DIST_CM, GOOD_SPREAD_DEG = 3.0, 3.0  # wrist-to-target distance / hand motion while capturing
 
 
-def step(n: int, title: str, *lines: str) -> None:
-    print(f"\n[회전] ===== {n}/4 {title} =====", *(f"[회전]   {line}" for line in lines), sep="\n", flush=True)
-
-
 def main() -> None:
     hand, start_btn, end_btn = HAND[args.side]
+    guide = StepGuide("회전", 4, args.panel_lang)
     calib = MountCalibrationFile(args.calib)
     if args.side not in calib.data:
         raise SystemExit(f"[회전] {args.calib}에 {hand}손 피벗 값이 없습니다: calibrate_pivot.py를 먼저 하세요")
@@ -125,8 +128,9 @@ def main() -> None:
     template = flat_hand_template(args.side)
     target, capture = None, []
     ready, a_prev, b_prev, frame = False, False, False, 0
-    step(1, "헤드셋 연결", "헤드셋을 쓰고 Quest 브라우저에서 Disconnect → Connect → AR(패스스루)로 접속",
-         f"{hand}쪽 컨트롤러가 잡히면 다음 단계로 넘어갑니다.")
+    guide.step(1, "헤드셋 연결", ("헤드셋을 쓰고 Quest 브라우저에서 Disconnect → Connect → AR(패스스루)로 접속",
+                                f"{hand}쪽 컨트롤러가 잡히면 다음 단계로 넘어갑니다."),
+               en="Rotation: connect the headset in AR (passthrough)")
     while simulation_app.is_running():
         simulation_app.update()
         frame += 1
@@ -138,7 +142,9 @@ def main() -> None:
             continue
         if not ready:
             ready = True
-            step(2, "목표 손 표시", "노란 점 = 내 손목.", f"{start_btn}를 한 번 누르면 내 앞에 초록 손(손바닥 아래, 손가락 앞)이 나타납니다.")
+            guide.step(2, "목표 손 표시", ("노란 점 = 내 손목.",
+                                           f"{start_btn}를 한 번 누르면 내 앞에 초록 손(손바닥 아래, 손가락 앞)이 나타납니다."),
+                       en=f"Yellow = your wrist. Press {start_btn} to show the green target hand")
         pose, inputs = ctrl
         wrist_pos, _ = mounted.wrist(args.side, pose)
         live_wrist.visualize(translations=wrist_pos[None])
@@ -146,9 +152,11 @@ def main() -> None:
         b_now = inputs[BUTTONS["secondary"]] > 0.5
         if b_now and not b_prev and np.any(quest.head()[:3]):
             if target is None:
-                step(3, "손 맞추기", f"실제 {hand}손을 초록 손에 겹치고, 노란 점을 초록 큰 점에 맞추세요.",
-                     f"맞으면 {end_btn}를 한 번 누르고 0.5초 동안 움직이지 마세요 → 저장 후 바로 종료.",
-                     f"{start_btn}: 초록 손을 지금 보는 방향 앞으로 다시 놓기")
+                guide.step(3, "손 맞추기", (f"실제 {hand}손을 초록 손에 겹치고, 노란 점을 초록 큰 점에 맞추세요.",
+                                            f"맞으면 {end_btn}를 한 번 누르고 0.5초 동안 움직이지 마세요 → 저장 후 종료.",
+                                            f"{start_btn}: 초록 손을 지금 보는 방향 앞으로 다시 놓기"),
+                           en=f"Put your hand on the green hand, yellow dot on the big green dot. "
+                              f"{end_btn}: capture (hold still 0.5 s)  {start_btn}: re-place")
             else:
                 print("[회전]   초록 손을 다시 놓았습니다.", flush=True)
             target = place_target(quest.head())
@@ -161,12 +169,13 @@ def main() -> None:
         target_wrist.visualize(translations=target[0][None])
         draw_dotted_axes(target_axes, target[0], target[1])
         if frame % 90 == 0 and not capture:
-            print(f"[회전]   손목 ↔ 초록 손목 거리 {np.linalg.norm(wrist_pos - target[0]) * 100:.1f} cm", flush=True)
+            dist = np.linalg.norm(wrist_pos - target[0]) * 100
+            guide.status(f"손목 ↔ 초록 손목 거리 {dist:.1f} cm", en=f"wrist to target: {dist:.1f} cm")
 
         a_now = inputs[BUTTONS["primary"]] > 0.5
         if a_now and not a_prev and not capture:
             capture = [mounted.ctrl_rot[args.side]]
-            step(4, "캡처 · 저장", "움직이지 마세요 (0.5초) ...")
+            guide.step(4, "캡처", ("움직이지 마세요 (0.5초) ...",), en="Hold still (0.5 s) ...")
         elif capture:
             capture.append(mounted.ctrl_rot[args.side])
             if len(capture) >= CAPTURE_FRAMES:
@@ -178,14 +187,16 @@ def main() -> None:
                 calib.save()
                 dist = np.linalg.norm(wrist_pos - target[0]) * 100
                 ok = dist <= GOOD_DIST_CM and spread <= GOOD_SPREAD_DEG
-                print(f"[회전]   컨트롤러 → 손 회전: {angle_deg(rot):.0f}°",
-                      f"[회전]   손목 ↔ 초록 손목 거리 {dist:.1f} cm (기준 {GOOD_DIST_CM:.0f} cm 이하) → "
-                      f"{'OK' if dist <= GOOD_DIST_CM else '멀다: 노란 점을 초록 큰 점에 더 가깝게'}",
-                      f"[회전]   캡처 중 손 움직임 {spread:.1f}° (기준 {GOOD_SPREAD_DEG:.0f}° 이하) → "
-                      f"{'OK' if spread <= GOOD_SPREAD_DEG else '흔들림: 더 가만히'}",
-                      f"[회전]   저장: {calib.path}",
-                      f"[회전]   결과: {'정상' if ok else '저장은 했지만 다시 하는 것을 권장'} — 결과는 텔레옵에서 확인하세요.",
-                      sep="\n", flush=True)
+                guide.step(4, f"저장: {'정상' if ok else '저장은 했지만 다시 하는 것을 권장'}", (
+                    f"손목 ↔ 초록 손목 거리 {dist:.1f} cm (기준 {GOOD_DIST_CM:.0f} cm 이하) → "
+                    f"{'OK' if dist <= GOOD_DIST_CM else '멀다: 노란 점을 초록 큰 점에 더 가깝게'}",
+                    f"캡처 중 손 움직임 {spread:.1f}° (기준 {GOOD_SPREAD_DEG:.0f}° 이하) → "
+                    f"{'OK' if spread <= GOOD_SPREAD_DEG else '흔들림: 더 가만히'}",
+                    f"컨트롤러 → 손 회전 {angle_deg(rot):.0f}°. 결과는 텔레옵에서 확인하세요."),
+                    en=f"Saved. distance {dist:.1f} cm {'OK' if dist <= GOOD_DIST_CM else '(redo: closer)'}, "
+                       f"motion {spread:.1f} deg {'OK' if spread <= GOOD_SPREAD_DEG else '(redo: hold still)'}")
+                print(f"[회전]   저장: {calib.path}", flush=True)
+                guide.linger(simulation_app)
                 break
         a_prev = a_now
 
