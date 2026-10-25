@@ -65,9 +65,10 @@ class ManusDevice(DeviceBase):
         self._lost_count = {side: 0 for side in SIDES}
         self._trace = None
         self._trace_prev: dict[str, np.ndarray] = {}
+        self._mark_prev = False
         if cfg.controller_trace:
             self._trace = open(cfg.controller_trace, "a", buffering=1)
-            self._trace.write("t,side,x,y,z,qw,qx,qy,qz,lost,wrist_x,wrist_y,wrist_z\n")
+            self._trace.write("t,side,x,y,z,qw,qx,qy,qz,lost,wrist_x,wrist_y,wrist_z,mark,robot_x,robot_y,robot_z,robot_qw,robot_qx,robot_qy,robot_qz\n")
             print(f"[vr_teleop] controller trace: {cfg.controller_trace}")
         self._started = False
         self._pending_start = 0
@@ -197,11 +198,8 @@ class ManusDevice(DeviceBase):
                 lost = self._position_lost(side, pose)
                 if not lost:
                     self._wrist[side] = self._ctrl.wrist(side, pose)
-                if self._trace is not None and not np.array_equal(pose, self._trace_prev.get(side)):
-                    self._trace_prev[side] = pose.copy()
-                    wrist = self._wrist[side][0] if side in self._wrist else np.full(3, np.nan)
-                    self._trace.write(f"{time.monotonic():.4f},{side}," + ",".join(f"{v:.6f}" for v in pose)
-                                      + f",{int(lost)}," + ",".join(f"{v:.5f}" for v in wrist) + "\n")
+                if self._trace is not None:
+                    self._write_trace(side, pose, ctrl[1], lost)
                 if lost:
                     continue  # hold the last wrist pose
                 if newly:
@@ -218,6 +216,25 @@ class ManusDevice(DeviceBase):
                     self._wrist[side] = (pose[:3], rot_from_wxyz(pose[3:]))
                     if newly:
                         print(f"[vr_teleop] {side} hand tracked by the headset at {np.round(pose[:3], 3).tolist()}")
+
+    def _write_trace(self, side: str, pose: np.ndarray, inputs: np.ndarray, lost: bool) -> None:
+        """One CSV row per new controller pose: raw pose, wrist sent to the retargeter, robot wrist.
+        B / Y (secondary button) marks the row, so a moment seen in the headset can be found."""
+        from ..devices.metaquest.quest_openxr_isaaclab import BUTTONS
+
+        mark = bool(inputs[BUTTONS["secondary"]] > 0.5)
+        if mark and not self._mark_prev:
+            print(f"[vr_teleop] MARK {time.strftime('%H:%M:%S')} ({side} B/Y)")
+        new_mark, self._mark_prev = mark and not self._mark_prev, mark
+        if np.array_equal(pose, self._trace_prev.get(side)) and not new_mark:
+            return
+        self._trace_prev[side] = pose.copy()
+        wrist = self._wrist[side][0] if side in self._wrist else np.full(3, np.nan)
+        robot = self._robot_wrist_pose()
+        robot = np.full(7, np.nan) if robot is None else robot
+        self._trace.write(f"{time.time():.4f},{side}," + ",".join(f"{v:.6f}" for v in pose) + f",{int(lost)},"
+                          + ",".join(f"{v:.5f}" for v in wrist) + f",{int(new_mark)},"
+                          + ",".join(f"{v:.5f}" for v in robot) + "\n")
 
     def _position_lost(self, side: str, pose: np.ndarray) -> bool:
         """True while the controller is not seen by the headset cameras: the runtime then keeps updating the
