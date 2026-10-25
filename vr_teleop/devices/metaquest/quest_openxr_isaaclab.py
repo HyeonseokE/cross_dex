@@ -82,7 +82,7 @@ class QuestXR:
             from omni.kit.xr.core import XRCore
 
             def _log(event):
-                print(f"[quest] xr command {event.payload.get('message')!r} at {_time.strftime('%H:%M:%S')}", flush=True)
+                print(f"[quest] xr command {event.payload['message']!r} at {_time.strftime('%H:%M:%S')}", flush=True)
 
             self._cmd_sub = XRCore.get_singleton().get_message_bus().create_subscription_to_pop_by_type(
                 carb.events.type_from_string(OpenXRDevice.TELEOP_COMMAND_EVENT_TYPE), _log)

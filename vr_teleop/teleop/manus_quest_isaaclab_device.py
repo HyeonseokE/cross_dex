@@ -73,6 +73,8 @@ class ManusDevice(DeviceBase):
         self._started = False
         self._pending_start = 0
         self._last_log = 0.0
+        self.primary_button_callback = None  # called with the side when A (right) / X (left) is pressed
+        self._primary_prev = {side: False for side in SIDES}
 
         self._calib = MountCalibrationFile(cfg.calibration_json) if cfg.calibration_json else None
         self._ctrl = HandMountedController()
@@ -196,6 +198,10 @@ class ManusDevice(DeviceBase):
                 pose, newly = ctrl[0], not self._tracked[side].tracked
                 if not self._tracked[side].update(pose):
                     continue
+                pressed = bool(ctrl[1][4] > 0.5)  # BUTTONS["primary"]: A (right) / X (left)
+                if pressed and not self._primary_prev[side] and self.primary_button_callback is not None:
+                    self.primary_button_callback(side)
+                self._primary_prev[side] = pressed
                 lost = self._position_lost(side, pose)
                 if not lost:
                     self._wrist[side] = self._ctrl.wrist(side, pose)

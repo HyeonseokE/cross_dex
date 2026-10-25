@@ -184,7 +184,7 @@ class RecordPanel:
 
     def waiting(self, last: str | None = None) -> None:
         self._panel.show([f"{last or 'READY'}  |  saved {self._count()}",
-                          "align your hand with the robot hand, then START"])
+                          "align your hand with the robot hand, then A / X button or Play"])
 
     def recording(self, detail: str | None = None) -> None:
         if detail is None:
@@ -195,14 +195,14 @@ class RecordPanel:
 
     def stopped(self, mid_episode: bool) -> None:
         self._panel.show(["PAUSED mid-demo  |  START to resume" if mid_episode
-                          else f"PAUSED  |  saved {self._count()}  |  START for the next demo"])
+                          else f"PAUSED  |  saved {self._count()}  |  A / X button or Play for the next demo"])
 
     def after_reset(self, reason: str) -> None:
         last = {"after_success": f"SAVED demo {self._recorder.num_episodes}",
                 "manual_reset": "RESET - attempt not saved",
                 "task_termination": "Task ended (e.g. object out of bounds) - not saved"}.get(reason, "RESET")
         self._panel.show([f"{last}  |  saved {self._count()}",
-                          "press Running once (or RESET, then START) for the next demo"])
+                          "next demo: A (right) / X (left) controller button, or Reset then Play"])
 
     def done(self) -> None:
         self._panel.show([f"DONE  |  {self._count()} demos recorded"])
