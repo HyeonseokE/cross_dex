@@ -14,11 +14,13 @@ retargeting:
   xr_hand_offset_xyz: [0, 0, 0]
   mano_correction_vis: true
 
-  joint_limits_override:
-    THJ3: [0, 0]
-    LFJ5: [0, 0]
-    l_THJ3: [0, 0]
-    l_LFJ5: [0, 0]
+  # Bench2Dex locked THJ3 / LFJ5 here ([0, 0]); unlocked 2026-10-26 to retarget all 22 Shadow finger joints.
+  # To lock them again:
+  # joint_limits_override:
+  #   THJ3: [0, 0]
+  #   LFJ5: [0, 0]
+  #   l_THJ3: [0, 0]
+  #   l_LFJ5: [0, 0]
 
   right:
     urdf_path: ur5+shadow_hand/urdf/Right_Hand.urdf
