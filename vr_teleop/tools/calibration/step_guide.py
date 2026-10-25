@@ -46,6 +46,11 @@ class StepGuide:
         self._head = [f"{n}/{self.total}  {title}", *lines] if self.korean else [f"{n}/{self.total}  {en}"]
         self._guard(self._build)
 
+    def show(self, lines: list[str]) -> None:
+        """Rebuild the panel (in front of the headset now) with these lines and no terminal output."""
+        self._head = list(lines)
+        self._guard(self._build)
+
     def status(self, text: str, en: str = "", echo: bool = True) -> None:
         if echo:
             print(f"[{self.tag}]   {text}", flush=True)

@@ -150,3 +150,56 @@ class SuccessStatus:
                 h = float(env.scene[name].data.root_pos_w[0, 2]) - table
                 out.append(f"{name} {h:.2f}/{G.LIFT_SUCCESS_HEIGHT_M:.2f} m {_flag(h >= G.LIFT_SUCCESS_HEIGHT_M)}")
         return out
+
+
+class RecordPanel:
+    """record_demos' in-headset status for Manus teleop, drop-in for its ``_XrStatusPanel``.
+
+    DexVerse's own panel is off by default (``--xr_status_panel``: Isaac Lab's widget, rebuilt on every text
+    change, leaked renderer descriptors on one server). This one is rebuilt only when the state changes (READY /
+    REC / SAVED ...), in front of the headset at that moment, and the live success line changes its text in place.
+    """
+
+    def __init__(self, recorder, target: int, head_pose):
+        from vr_teleop.tools.calibration.step_guide import StepGuide
+
+        self._recorder, self._target = recorder, int(target)
+        self._panel = StepGuide("rec", 0, "en", head_pose=head_pose)
+        self._last_try = 0.0
+
+    def retry(self) -> None:
+        """Before the headset connects there is nowhere to place the panel: build it once the headset is there."""
+        import time
+
+        if self._panel._container is None and self._panel._head and time.monotonic() - self._last_try > 1.0:
+            self._last_try = time.monotonic()
+            self._panel.show(self._panel._head)
+
+    def _count(self) -> str:
+        n = self._recorder.num_episodes
+        return f"{n} / {self._target}" if self._target > 0 else str(n)
+
+    def waiting(self, last: str | None = None) -> None:
+        self._panel.show([f"{last or 'READY'}  |  saved {self._count()}",
+                          "align your hand with the robot hand, then START"])
+
+    def recording(self, detail: str | None = None) -> None:
+        if detail is None:
+            n = self._recorder.num_episodes + 1
+            self._panel.show([f"REC  demo {n}" + (f" / {self._target}" if self._target > 0 else "")])
+        else:
+            self._panel.status(detail, en=detail, echo=False)
+
+    def stopped(self, mid_episode: bool) -> None:
+        self._panel.show(["PAUSED mid-demo  |  START to resume" if mid_episode
+                          else f"PAUSED  |  saved {self._count()}  |  START for the next demo"])
+
+    def after_reset(self, reason: str) -> None:
+        last = {"after_success": f"SAVED demo {self._recorder.num_episodes}",
+                "manual_reset": "RESET - attempt not saved",
+                "task_termination": "Task ended (e.g. object out of bounds) - not saved"}.get(reason, "RESET")
+        self._panel.show([f"{last}  |  saved {self._count()}",
+                          "press Running once (or RESET, then START) for the next demo"])
+
+    def done(self) -> None:
+        self._panel.show([f"DONE  |  {self._count()} demos recorded"])
