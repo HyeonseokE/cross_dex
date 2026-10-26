@@ -202,7 +202,12 @@ class RecordPanel:
                 "manual_reset": "RESET - attempt not saved",
                 "task_termination": "Task ended (e.g. object out of bounds) - not saved"}.get(reason, "RESET")
         self._panel.show([f"{last}  |  saved {self._count()}",
-                          "next demo: A (right) / X (left) controller button, or Reset then Play"])
+                          "scene is reset. Hand to the start pose, then A (right) / X (left) button or Play.",
+                          "No Reset needed (a Reset within 3 s is ignored)."])
+
+    def reset_ignored(self, since_s: float) -> None:
+        self._panel.show([f"RESET ignored: scene was reset {since_s:.0f} s ago  |  saved {self._count()}",
+                          "hand to the start pose, then A (right) / X (left) button or Play"])
 
     def done(self) -> None:
         self._panel.show([f"DONE  |  {self._count()} demos recorded"])
