@@ -106,7 +106,19 @@ def main():
         from manus_sdk_reader import MANUS
         reader = MANUS
         reader.acquire()
-    srv = Server(a.bind, a.port)
+    try:
+        srv = Server(a.bind, a.port)
+    except OSError as exc:  # another bridge already owns the port (dexverse_session.sh leaves one running)
+        if exc.errno != 98:
+            raise
+        import subprocess
+        pids = subprocess.run(["pgrep", "-f", "bridge/manus_bridge_server.py"], capture_output=True, text=True).stdout.split()
+        others = ", ".join(pid for pid in pids if int(pid) != os.getpid()) or "?"
+        raise SystemExit(
+            f"[bridge] port {a.port} is already in use: a Manus bridge is running (pid {others}).\n"
+            "[bridge] Use it instead: python vr_teleop/vr_teleop/devices/manus/bridge/manus_bridge_client.py, "
+            "or tail -f /workspace/logs/teleop/<date>/manus_bridge.log (dexverse_session.sh starts it).\n"
+            "[bridge] To restart it: pkill -f bridge/manus_bridge_server.py, then run this again.")
     print(f"[bridge] {'FAKE ' if a.fake else ''}listening on {a.bind}:{a.port} @ {a.hz:g} Hz", flush=True)
 
     seq, t0, last_log = 0, time.monotonic(), 0.0
