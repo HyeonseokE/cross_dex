@@ -116,7 +116,9 @@ class ManusDevice(DeviceBase):
     def reset(self) -> None:
         self._started = False
         self._pending_start = 0  # a START requested before the reset must not start the next episode
-        if self._quest is not None:
+        if self._quest is not None and self.cfg.wrist_mode == "handtracking":
+            # Clears the hand-tracking history. Controller mode needs nothing, and the XR "reset" command has
+            # already reset the OpenXR device once: a second XR anchor re-sync in the same frame is avoided.
             self._quest.reset()
 
     def add_callback(self, key: Any, func: Callable) -> None:

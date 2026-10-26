@@ -41,6 +41,7 @@ case "${MODE}" in
 esac
 echo "[session] ${SCRIPT} wrist=${VR_TELEOP_WRIST} calib=${VR_TELEOP_CALIB} log=${LOG_DIR}/${SCRIPT}_${STAMP}.log trace=${VR_TELEOP_TRACE}"
 cd "${DEXVERSE_ROOT}"
+set +e  # the recorder exit code is handled below (set -e ended the script before the relaunch)
 while :; do
     "${DEXVERSE_ROOT}/scripts/teleop_tools/run_teleop.sh" "${SCRIPT}" --teleop_device manus "${ARGS[@]}" \
         2>&1 | tee -a "${LOG_DIR}/${SCRIPT}_${STAMP}.log"
