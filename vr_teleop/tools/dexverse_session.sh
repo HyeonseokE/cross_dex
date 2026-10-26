@@ -27,6 +27,7 @@ export PYTHONUNBUFFERED=1  # the log goes through tee: print immediately
 if ! (exec 3<>/dev/tcp/127.0.0.1/${VR_TELEOP_BRIDGE_PORT:-47000}) 2>/dev/null; then
     echo "[session] starting the Manus bridge (log ${LOG_DIR}/manus_bridge.log)"
     setsid nohup "${HERE}/run_manus_bridge.sh" >> "${LOG_DIR}/manus_bridge.log" 2>&1 &
+    ln -sfn "${LOG_DIR}/manus_bridge.log" "$(dirname "${LOG_DIR}")/manus_bridge.log"  # stable path: the running bridge's log
     sleep 3
 fi
 

@@ -111,7 +111,7 @@ def main():
         raise SystemExit(
             f"[bridge] port {a.port} is already in use: a Manus bridge is running (pid {others}).\n"
             "[bridge] Use it instead: python vr_teleop/vr_teleop/devices/manus/bridge/manus_bridge_client.py, "
-            "or tail -f /workspace/logs/teleop/<date>/manus_bridge.log (dexverse_session.sh starts it).\n"
+            "or tail -f /workspace/logs/teleop/manus_bridge.log (the bridge dexverse_session.sh started).\n"
             "[bridge] To restart it: pkill -f bridge/manus_bridge_server.py, then run this again.")
     # The dongle is taken only once this process owns the port (a second bridge must not touch the SDK).
     reader = None
