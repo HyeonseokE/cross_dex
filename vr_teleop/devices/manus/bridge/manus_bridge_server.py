@@ -100,12 +100,6 @@ def main():
     ap.add_argument("--fake", action="store_true", help="장갑 없이 합성 손 송출")
     a = ap.parse_args()
 
-    reader = None
-    if not a.fake:
-        sys.path.insert(0, HERE)
-        from manus_sdk_reader import MANUS
-        reader = MANUS
-        reader.acquire()
     try:
         srv = Server(a.bind, a.port)
     except OSError as exc:  # another bridge already owns the port (dexverse_session.sh leaves one running)
@@ -119,6 +113,13 @@ def main():
             "[bridge] Use it instead: python vr_teleop/vr_teleop/devices/manus/bridge/manus_bridge_client.py, "
             "or tail -f /workspace/logs/teleop/<date>/manus_bridge.log (dexverse_session.sh starts it).\n"
             "[bridge] To restart it: pkill -f bridge/manus_bridge_server.py, then run this again.")
+    # The dongle is taken only once this process owns the port (a second bridge must not touch the SDK).
+    reader = None
+    if not a.fake:
+        sys.path.insert(0, HERE)
+        from manus_sdk_reader import MANUS
+        reader = MANUS
+        reader.acquire()
     print(f"[bridge] {'FAKE ' if a.fake else ''}listening on {a.bind}:{a.port} @ {a.hz:g} Hz", flush=True)
 
     seq, t0, last_log = 0, time.monotonic(), 0.0
