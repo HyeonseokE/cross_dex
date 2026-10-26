@@ -1,41 +1,121 @@
+# 2026-10-26 (hscho): tuned on a 45 s Manus recording of the operator (open hand / fist / pinch), see
+# vr_teleop/tools/check_hands.py notes. Bench2Dex's values left the open hand with MCP bent and PIP/DIP
+# pinned at their hyperextension limits (LEAP) / fingertips curled (Sharpa): tip-only DexPilot targets were
+# too close to the wrist. Fix: no hyperextension, distal joints capped, hand_offset_xyz +3 cm along z.
 retargeting:
   type: DexPilot
-  scaling_factor: 1.00
+  scaling_factor: 1.0
   project_dist: 0.01
   escape_dist: 0.02
   low_pass_alpha: 0.2
-
-  hand_offset_xyz: [0, 0, 0]
-  hand_scale_xyz: [1, 1.0, 1.0]
+  hand_offset_xyz:
+  - 0
+  - 0
+  - 0.03
+  hand_scale_xyz:
+  - 1
+  - 1.0
+  - 1.0
   mano_correction_vis: true
-
   joint_limits_override:
-    right_thumb_MCP_AA: [0, 0]
-    right_pinky_CMC: [0, 0]
-    left_thumb_MCP_AA: [0, 0]
-    left_pinky_CMC: [0, 0]
-
+    right_thumb_MCP_AA:
+    - 0
+    - 0
+    right_pinky_CMC:
+    - 0
+    - 0
+    left_thumb_MCP_AA:
+    - 0
+    - 0
+    left_pinky_CMC:
+    - 0
+    - 0
+    right_index_DIP:
+    - 0
+    - 0.7
+    right_index_PIP:
+    - 0
+    - 1.6
+    right_middle_DIP:
+    - 0
+    - 0.7
+    right_middle_PIP:
+    - 0
+    - 1.6
+    right_ring_DIP:
+    - 0
+    - 0.7
+    right_ring_PIP:
+    - 0
+    - 1.6
+    right_pinky_DIP:
+    - 0
+    - 0.7
+    right_pinky_PIP:
+    - 0
+    - 1.6
+    right_thumb_IP:
+    - 0
+    - 1.0
+    left_index_DIP:
+    - 0
+    - 0.7
+    left_index_PIP:
+    - 0
+    - 1.6
+    left_middle_DIP:
+    - 0
+    - 0.7
+    left_middle_PIP:
+    - 0
+    - 1.6
+    left_ring_DIP:
+    - 0
+    - 0.7
+    left_ring_PIP:
+    - 0
+    - 1.6
+    left_pinky_DIP:
+    - 0
+    - 0.7
+    left_pinky_PIP:
+    - 0
+    - 1.6
+    left_thumb_IP:
+    - 0
+    - 1.0
   right:
     urdf_path: kuka+sharpa/right_sharpa_wave.urdf
-    articulation_prefix: "multi_"
-    wrist_link_name: "right_hand_C_MC"
+    articulation_prefix: multi_
+    wrist_link_name: right_hand_C_MC
     finger_tip_link_names:
-      - right_thumb_fingertip
-      - right_index_fingertip
-      - right_middle_fingertip
-      - right_ring_fingertip
-      - right_pinky_fingertip
-    mano_to_pinocchio_rpy: [1.5708, -1.5708, 0]
-    sim_wrist_to_pin_root_rpy: [0, 0, 0]
-
+    - right_thumb_fingertip
+    - right_index_fingertip
+    - right_middle_fingertip
+    - right_ring_fingertip
+    - right_pinky_fingertip
+    mano_to_pinocchio_rpy:
+    - 1.5708
+    - -1.5708
+    - 0
+    sim_wrist_to_pin_root_rpy:
+    - 0
+    - 0
+    - 0
   left:
     urdf_path: kuka+sharpa/left_sharpa_wave.urdf
-    wrist_link_name: "left_hand_C_MC"
+    wrist_link_name: left_hand_C_MC
     finger_tip_link_names:
-      - left_thumb_fingertip
-      - left_index_fingertip
-      - left_middle_fingertip
-      - left_ring_fingertip
-      - left_pinky_fingertip
-    mano_to_pinocchio_rpy: [-1.5708, -1.5708, 0]
-    sim_wrist_to_pin_root_rpy: [0, 0, 0]
+    - left_thumb_fingertip
+    - left_index_fingertip
+    - left_middle_fingertip
+    - left_ring_fingertip
+    - left_pinky_fingertip
+    mano_to_pinocchio_rpy:
+    - -1.5708
+    - -1.5708
+    - 0
+    sim_wrist_to_pin_root_rpy:
+    - 0
+    - 0
+    - 0
