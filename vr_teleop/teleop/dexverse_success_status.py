@@ -167,7 +167,7 @@ class RecordPanel:
         # Narrow and well to the left, a little up: the XR client's START / STOP / RESET panel sits in front of
         # the operator (a 1.3 m wide panel centred 0.75 m left still reached the middle).
         self._panel = StepGuide("rec", 0, "en", head_pose=head_pose, place=(1.4, -1.0, 0.4), max_width=0.7,
-                                spare_lines=6)
+                                spare_lines=8, rebuild=False)  # built once, text updated in place
         self._last_try = 0.0
 
     def retry(self) -> None:

@@ -32,7 +32,7 @@ class StepGuide:
     ``status()`` changes its text in place. Panel errors only disable the panel."""
 
     def __init__(self, tag: str, total: int, lang: str, head_pose=None, place=(1.5, 0.0, 0.32), font: float = 0.045,
-                 max_width: float = 1.3, spare_lines: int = 1):
+                 max_width: float = 1.3, spare_lines: int = 1, rebuild: bool = True):
         self.tag, self.total = tag, total
         self.korean = lang == "ko" and os.path.isfile(KOREAN_FONT)
         self._head_pose = head_pose  # callable -> headset pose [x, y, z, qw, qx, qy, qz] (zeros before connect)
@@ -42,6 +42,9 @@ class StepGuide:
         self._label = None
         self._place = place  # panel position from the headset: (forward, right, up) m, forward/right horizontal
         self._FONT, self._MAX_W, self._spare = font, max_width, spare_lines
+        # rebuild=False: the widget is created once and only its text changes afterwards (creating / destroying
+        # XR widgets repeatedly is suspected of freezing Kit's renderer; Isaac Lab notes descriptor leaks too).
+        self._rebuild = rebuild
 
     def step(self, n: int, title: str, lines: tuple[str, ...] = (), en: str = "") -> None:
         print(f"\n[{self.tag}] ===== {n}/{self.total} {title} =====", *(f"[{self.tag}]   {line}" for line in lines),
@@ -50,9 +53,13 @@ class StepGuide:
         self._guard(self._build)
 
     def show(self, lines: list[str]) -> None:
-        """Rebuild the panel (in front of the headset now) with these lines and no terminal output."""
+        """Show these lines (no terminal output): rebuilt in front of the headset, or, with ``rebuild=False`` and
+        a panel already up, the text is replaced in place."""
         self._head = list(lines)
-        self._guard(self._build)
+        if not self._rebuild and self._container is not None and self._label is not None:
+            self._guard(lambda: self._label.set_label_text(self._wrap(self._head)))
+        else:
+            self._guard(self._build)
 
     def status(self, text: str, en: str = "", echo: bool = True) -> None:
         if echo:
