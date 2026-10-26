@@ -41,5 +41,12 @@ case "${MODE}" in
 esac
 echo "[session] ${SCRIPT} wrist=${VR_TELEOP_WRIST} calib=${VR_TELEOP_CALIB} log=${LOG_DIR}/${SCRIPT}_${STAMP}.log trace=${VR_TELEOP_TRACE}"
 cd "${DEXVERSE_ROOT}"
-"${DEXVERSE_ROOT}/scripts/teleop_tools/run_teleop.sh" "${SCRIPT}" --teleop_device manus "${ARGS[@]}" \
-    2>&1 | tee "${LOG_DIR}/${SCRIPT}_${STAMP}.log"
+while :; do
+    "${DEXVERSE_ROOT}/scripts/teleop_tools/run_teleop.sh" "${SCRIPT}" --teleop_device manus "${ARGS[@]}" \
+        2>&1 | tee -a "${LOG_DIR}/${SCRIPT}_${STAMP}.log"
+    rc=${PIPESTATUS[0]}
+    [[ ${rc} -eq 3 ]] || exit "${rc}"
+    # exit code 3 = the recorder's watchdog found the app frozen (XR session hang): start it again.
+    echo "[session] recorder froze and exited; relaunching in 5 s (saved demos are kept; reconnect the headset)" | tee -a "${LOG_DIR}/${SCRIPT}_${STAMP}.log"
+    sleep 5
+done
