@@ -129,6 +129,7 @@ def main():
         gloves = fake_snapshot(t - t0) if a.fake else reader.snapshot()
         msg = {"v": 1, "t": time.time(), "seq": seq,
                "gloves": [{"id": int(g["id"]), "side": g["side"], "age_s": round(g["age_s"], 3),
+                           "battery": None if a.fake else reader.battery.get(g["id"]),  # %, None until known
                            "kp": [round(float(v), 5) for v in np.asarray(g["kp"]).reshape(-1)],
                            "wq": None if g.get("wq") is None else [round(float(v), 6) for v in g["wq"]],
                            "ergo": None if g["ergo"] is None else

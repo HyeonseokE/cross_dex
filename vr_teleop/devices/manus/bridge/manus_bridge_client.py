@@ -76,8 +76,15 @@ class ManusBridgeClient:
                 )
         return out
 
+    def battery(self) -> dict[str, int | None]:
+        """Battery % per streaming glove side (None until the SDK has reported it)."""
+        with self._lock:
+            msg = self._msg
+        return {} if msg is None else {g["side"]: g.get("battery") for g in msg["gloves"]}
+
     def status(self) -> str:
-        sides = sorted(self.gloves())
+        batt = self.battery()
+        sides = [f"{s}:{batt[s]}%" if batt.get(s) is not None else s for s in sorted(self.gloves())]
         return f"bridge={'ok' if self.connected else self.err} msgs={self.n} gloves={sides}"
 
 
