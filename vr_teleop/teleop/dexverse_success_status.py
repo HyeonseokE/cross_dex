@@ -171,12 +171,14 @@ class RecordPanel:
         self._last_try = 0.0
 
     def retry(self) -> None:
-        """Before the headset connects there is nowhere to place the panel: build it once the headset is there."""
+        """Called every loop iteration. Before the headset connects there is nowhere to place the panel: build it
+        once the headset is there; afterwards flush pending text (the panel is never rebuilt, see StepGuide)."""
         import time
 
         if self._panel._container is None and self._panel._head and time.monotonic() - self._last_try > 1.0:
             self._last_try = time.monotonic()
             self._panel.show(self._panel._head)
+        self._panel.tick()  # text set before Kit built the widget is applied here, one frame later
 
     def _count(self) -> str:
         n = self._recorder.num_episodes

@@ -45,6 +45,7 @@ class StepGuide:
         # rebuild=False: the widget is created once and only its text changes afterwards (creating / destroying
         # XR widgets repeatedly is suspected of freezing Kit's renderer; Isaac Lab notes descriptor leaks too).
         self._rebuild = rebuild
+        self._pending: str | None = None  # text that could not be applied yet (widget not built by Kit yet)
 
     def step(self, n: int, title: str, lines: tuple[str, ...] = (), en: str = "") -> None:
         print(f"\n[{self.tag}] ===== {n}/{self.total} {title} =====", *(f"[{self.tag}]   {line}" for line in lines),
@@ -56,16 +57,38 @@ class StepGuide:
         """Show these lines (no terminal output): rebuilt in front of the headset, or, with ``rebuild=False`` and
         a panel already up, the text is replaced in place."""
         self._head = list(lines)
-        if not self._rebuild and self._container is not None and self._label is not None:
-            self._guard(lambda: self._label.set_label_text(self._wrap(self._head)))
+        if not self._rebuild and self._container is not None:
+            self._set_text(self._wrap(self._head))
         else:
             self._guard(self._build)
 
     def status(self, text: str, en: str = "", echo: bool = True) -> None:
         if echo:
             print(f"[{self.tag}]   {text}", flush=True)
-        if self._label is not None:
-            self._guard(lambda: self._label.set_label_text(self._wrap([*self._head, text if self.korean else en])))
+        if self._container is not None:
+            self._set_text(self._wrap([*self._head, text if self.korean else en]))
+
+    def tick(self) -> None:
+        """Apply text that was set before Kit built the widget (call once per frame)."""
+        if self._pending is not None:
+            self._set_text(self._pending)
+
+    def _set_text(self, text: str) -> None:
+        """Change the panel text in place. Kit creates the omni.ui widget in the scene frame's build function,
+        i.e. one render after ``_build``: until then the text is kept pending (never rebuild the panel for it)."""
+        self._pending = text
+        if self._label is None and self._container is not None:
+            comps = getattr(self._container.manipulator, "_ComposableManipulator__components", [])
+            if comps and comps[0].component and comps[0].component.widget:
+                self._label = comps[0].component.widget
+        if self._label is None:
+            return
+
+        def apply():
+            self._label.set_label_text(text)
+            self._pending = None
+
+        self._guard(apply)
 
     def linger(self, app, seconds: float = 8.0) -> None:
         """Keep the app (and the final panel) up for a while, so the result can be read in the headset."""
@@ -131,7 +154,4 @@ class StepGuide:
             SpatialSource.new_translation_source(Gf.Vec3d(*pos.tolist())),
             SpatialSource.new_look_at_camera_source(),
         ])
-        self._label = None
-        comps = getattr(self._container.manipulator, "_ComposableManipulator__components", [])
-        if comps and comps[0].component and comps[0].component.widget:
-            self._label = comps[0].component.widget
+        self._label, self._pending = None, None  # the widget appears after Kit's next render (see _set_text)
