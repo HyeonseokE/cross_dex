@@ -167,7 +167,10 @@ class ManusSource:
     def _on_landscape(self, landscape):
         d = landscape.gloveDevices
         with self._lock:
-            self.battery = {d.gloves[i].id: int(d.gloves[i].batteryPercentage) for i in range(d.gloveCount)}
+            # SDK가 연결 직후 404 같은 값을 주기도 함 (2026-10-26 로그 'right:404%') -> 0~100 밖은 알 수 없음(None)
+            self.battery = {d.gloves[i].id: (int(d.gloves[i].batteryPercentage)
+                                             if 0 <= d.gloves[i].batteryPercentage <= 100 else None)
+                            for i in range(d.gloveCount)}
 
     # --- reader
     def latest(self, prefer: str = "right"):

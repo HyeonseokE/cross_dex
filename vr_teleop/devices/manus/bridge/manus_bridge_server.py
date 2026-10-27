@@ -141,7 +141,7 @@ def main():
             last_log = t
             st = "" if a.fake else f" sdk={'ok' if reader.connected else (reader.err or 'starting')}"
             battery = {} if a.fake else reader.battery  # glove id -> % (SDK landscape)
-            listed = [(hex(g['id']), g['side'], f"{battery[g['id']]}%" if g['id'] in battery else '?%') for g in gloves]
+            listed = [(hex(g['id']), g['side'], f"{battery[g['id']]}%" if battery.get(g['id']) is not None else '?%') for g in gloves]
             print(f"[bridge] seq={seq} gloves={listed} "
                   f"clients={len(srv.clients)}{st}", flush=True)
         time.sleep(max(0.0, period - (time.monotonic() - t)))
