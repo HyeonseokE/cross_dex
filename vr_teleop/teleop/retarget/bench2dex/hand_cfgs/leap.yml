@@ -1,0 +1,87 @@
+# 2026-10-26 (hscho): tuned on a 45 s Manus recording of the operator (open hand / fist / pinch), see
+# vr_teleop/tools/check_hands.py notes. Bench2Dex's values left the open hand with MCP bent and PIP/DIP
+# pinned at their hyperextension limits (LEAP) / fingertips curled (Sharpa): tip-only DexPilot targets were
+# too close to the wrist. Fix: no hyperextension, distal joints capped, hand_offset_xyz +3 cm along z.
+retargeting:
+  type: DexPilot
+  scaling_factor: 1.0
+  project_dist: 0.01
+  escape_dist: 0.02
+  low_pass_alpha: 0.2
+  hand_offset_xyz:
+  - 0
+  - 0
+  - 0.03
+  hand_scale_xyz:
+  - 1.5
+  - 1.0
+  - 1.2
+  mano_correction_vis: true
+  wrist_link_name: base
+  finger_tip_link_names:
+  - thumb_tip_head
+  - index_tip_head
+  - middle_tip_head
+  - ring_tip_head
+  joint_limits_override:
+    '0':
+    - 0
+    - 0
+    '4':
+    - 0
+    - 0
+    '8':
+    - 0
+    - 0
+    '2':
+    - 0
+    - 1.6
+    '6':
+    - 0
+    - 1.6
+    '10':
+    - 0
+    - 1.6
+    '3':
+    - 0
+    - 1.2
+    '7':
+    - 0
+    - 1.2
+    '11':
+    - 0
+    - 1.2
+    '12':
+    - -0.35
+    - 1.0
+    '13':
+    - -0.47
+    - 1.5
+    '14':
+    - 0
+    - 1.0
+    '15':
+    - 0
+    - 1.2
+  right:
+    urdf_path: xarm+leap/leap_hand_right.urdf
+    articulation_prefix: multi_leap_r_
+    mano_to_pinocchio_rpy:
+    - 1.5708
+    - -1.5708
+    - 0
+    sim_wrist_to_pin_root_rpy:
+    - 0
+    - 0
+    - 0
+  left:
+    urdf_path: xarm+leap/leap_hand_left.urdf
+    articulation_prefix: leap_l_
+    mano_to_pinocchio_rpy:
+    - -1.5708
+    - -1.5708
+    - 0
+    sim_wrist_to_pin_root_rpy:
+    - 0
+    - 0
+    - 0
