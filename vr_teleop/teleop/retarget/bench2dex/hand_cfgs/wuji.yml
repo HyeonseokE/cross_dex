@@ -13,6 +13,54 @@ retargeting:
   xr_hand_scale_xyz: [1.10, 1.10, 1.10]
   mano_correction_vis: true
 
+  # 2026-10-26: with fingertip-only DexPilot the 4-DoF Wuji fingers flexed almost only at joint1 (MCP): on a recorded
+  # open->fist glove motion joint1 moved 1.2 rad while joint3/joint4 (PIP/DIP) moved < 0.1 rad, so the hand looked
+  # like one axis per finger. PIP/DIP now follow MCP (joint3 = 0.9 x, joint4 = 0.7 x of MCP's normalised flexion,
+  # starting above 0.4 rad MCP); the flexion joints are limited to [0, 1.55] so the coupling never hyperextends.
+  # The thumb (finger1) is left to DexPilot. Offline check (old glove profile): fist joint3 ~1.25, joint4 ~0.95 rad.
+  joint_limits_override:
+    right_finger2_joint1: [0.4, 1.55]
+    right_finger2_joint3: [0, 1.55]
+    right_finger2_joint4: [0, 1.55]
+    right_finger3_joint1: [0.4, 1.55]
+    right_finger3_joint3: [0, 1.55]
+    right_finger3_joint4: [0, 1.55]
+    right_finger4_joint1: [0.4, 1.55]
+    right_finger4_joint3: [0, 1.55]
+    right_finger4_joint4: [0, 1.55]
+    right_finger5_joint1: [0.4, 1.55]
+    right_finger5_joint3: [0, 1.55]
+    right_finger5_joint4: [0, 1.55]
+    left_finger2_joint1: [0.4, 1.55]
+    left_finger2_joint3: [0, 1.55]
+    left_finger2_joint4: [0, 1.55]
+    left_finger3_joint1: [0.4, 1.55]
+    left_finger3_joint3: [0, 1.55]
+    left_finger3_joint4: [0, 1.55]
+    left_finger4_joint1: [0.4, 1.55]
+    left_finger4_joint3: [0, 1.55]
+    left_finger4_joint4: [0, 1.55]
+    left_finger5_joint1: [0.4, 1.55]
+    left_finger5_joint3: [0, 1.55]
+    left_finger5_joint4: [0, 1.55]
+  joint_coupling:
+    - {source: right_finger2_joint1, targets: [right_finger2_joint3], ratio: 0.9}
+    - {source: right_finger2_joint1, targets: [right_finger2_joint4], ratio: 0.7}
+    - {source: right_finger3_joint1, targets: [right_finger3_joint3], ratio: 0.9}
+    - {source: right_finger3_joint1, targets: [right_finger3_joint4], ratio: 0.7}
+    - {source: right_finger4_joint1, targets: [right_finger4_joint3], ratio: 0.9}
+    - {source: right_finger4_joint1, targets: [right_finger4_joint4], ratio: 0.7}
+    - {source: right_finger5_joint1, targets: [right_finger5_joint3], ratio: 0.9}
+    - {source: right_finger5_joint1, targets: [right_finger5_joint4], ratio: 0.7}
+    - {source: left_finger2_joint1, targets: [left_finger2_joint3], ratio: 0.9}
+    - {source: left_finger2_joint1, targets: [left_finger2_joint4], ratio: 0.7}
+    - {source: left_finger3_joint1, targets: [left_finger3_joint3], ratio: 0.9}
+    - {source: left_finger3_joint1, targets: [left_finger3_joint4], ratio: 0.7}
+    - {source: left_finger4_joint1, targets: [left_finger4_joint3], ratio: 0.9}
+    - {source: left_finger4_joint1, targets: [left_finger4_joint4], ratio: 0.7}
+    - {source: left_finger5_joint1, targets: [left_finger5_joint3], ratio: 0.9}
+    - {source: left_finger5_joint1, targets: [left_finger5_joint4], ratio: 0.7}
+
   right:
     urdf_path: ur5+wuji/urdf/Right_Hand.urdf
     wrist_link_name: "right_palm_link"
