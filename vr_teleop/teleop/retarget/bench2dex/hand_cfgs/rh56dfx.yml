@@ -3,7 +3,7 @@ retargeting:
   scaling_factor: 1.07
   project_dist: 0.01
   escape_dist: 0.02
-  low_pass_alpha: 0.2
+  low_pass_alpha: 0.5  # 2026-10-28: was 0.2 (~5 frames lag); faster tracking
 
   hand_offset_xyz: [0, 0, 0.04]
   hand_scale_xyz: [1, 1.0, 1.0]
@@ -15,7 +15,11 @@ retargeting:
   mano_correction_vis: true
 
   # Mimic joints are already handled in Isaac Sim USD, so ignore them in dex_retargeting
-  ignore_mimic_joint: true
+  # 2026-10-28: the mimic joints (finger _2, thumb_3 / _4) are modelled INSIDE the optimisation (dex-retargeting mimic
+  # adaptor). With them ignored DexPilot planned with straight distal segments and the thumb-index pinch stayed
+  # 5 cm open (operator recording); with the adaptor it closes to 0.9 cm. The adaptor needs single-level mimic
+  # chains, so the URDFs used here are local copies (hand_cfgs/ur5+RH56DFX/urdf/, thumb_4 -> thumb_2 directly).
+  ignore_mimic_joint: false
 
   right:
     urdf_path: ur5+RH56DFX/urdf/Right_Hand.urdf

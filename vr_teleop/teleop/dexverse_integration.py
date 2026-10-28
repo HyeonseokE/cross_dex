@@ -73,8 +73,26 @@ class Bench2DexFingerRetargeter(SimpleRelativeRetargeter):
         if hand_type is None:
             raise ValueError(f"No Bench2Dex hand config for hand family '{parts[1]}'")
         self._hands = {}
+        self._dexpilot = {}  # hand -> (Bench2DexHand, [(angle index, dexpilot index)]) for mixed joints
         for hand in self._tracked_hands:
-            b2d = Bench2DexHand(hand_type, _SIDE[hand], input_device=cfg.bench2dex_input_device)
+            from .retarget.angle_retargeter import ANGLE_CFGS_DIR, AngleHand
+
+            backend = cfg.finger_backend
+            if backend == "auto":  # policy: angle map where retarget/angle_cfgs/<hand>.yml exists (human-like hands)
+                backend = "angle" if (ANGLE_CFGS_DIR / f"{parts[1]}.yml").is_file() else "bench2dex"
+            if backend == "angle":  # joint angles read off the glove skeleton, linear map (no optimiser)
+                b2d = AngleHand(parts[1], _SIDE[hand])
+                if b2d.needs_dexpilot:  # DexPilot for dexpilot_joints (e.g. the LEAP thumb) and for the pinch blend
+                    dp = Bench2DexHand(hand_type, _SIDE[hand], input_device=cfg.bench2dex_input_device)
+                    self._dexpilot[hand] = (dp, [(b2d.joint_names.index(n), dp.joint_names.index(n))
+                                                 for n in b2d.dexpilot_joints
+                                                 if n in b2d.joint_names and n in dp.joint_names],
+                                            [dp.joint_names.index(n) if n in dp.joint_names else -1 for n in b2d.joint_names])
+                    print(f"[vr_teleop] {hand.name}: angle map + DexPilot for {b2d.dexpilot_joints or 'no fixed joints'}"
+                          + (f", pinch blend {b2d.pinch_fingers} ({b2d.pinch_start*100:.1f} -> {b2d.pinch_full*100:.1f} cm)"
+                             if b2d.pinch_fingers else ""))
+            else:
+                b2d = Bench2DexHand(hand_type, _SIDE[hand], input_device=cfg.bench2dex_input_device)
             self._hands[hand] = b2d
             self._dex_output_joint_names[hand] = b2d.joint_names
             b2d_names = list(b2d.joint_names)
@@ -93,6 +111,19 @@ class Bench2DexFingerRetargeter(SimpleRelativeRetargeter):
     def _retarget_hand_fingers(self, hand_data: Any, hand: DeviceBase.TrackingTarget) -> np.ndarray:
         n_out = len(self._dex_output_joint_names.get(hand, []))
         qpos = self._hands[hand].retarget(hand_data) if hand in self._hands and isinstance(hand_data, dict) else None
+        if qpos is not None and hand in self._dexpilot:
+            dp, pairs, dp_index = self._dexpilot[hand]
+            dp.seed({n: float(v) for n, v in zip(self._hands[hand].joint_names, qpos)})  # refine the angle posture
+            q_dp = dp.retarget(hand_data)
+            if q_dp is not None:
+                qpos = np.array(qpos, dtype=np.float32)
+                w = self._hands[hand].blend_weights(hand_data)
+                if w is not None:  # pinch: blend toward the DexPilot solution where the thumb meets a fingertip
+                    for i, idp in enumerate(dp_index):
+                        if idp >= 0 and w[i] > 0:
+                            qpos[i] = (1.0 - w[i]) * qpos[i] + w[i] * q_dp[idp]
+                for ia, idp in pairs:
+                    qpos[ia] = q_dp[idp]
         return np.zeros(n_out, dtype=np.float32) if qpos is None else qpos
 
 
@@ -102,22 +133,30 @@ class Bench2DexFingerRetargeterCfg(SimpleRelativeRetargeterCfg):
 
     bench2dex_hand_type: str | None = None  # override hand_cfgs/<name>.yml; default from robot_type
     bench2dex_input_device: str = "manus"  # "manus": Manus-tuned scale / offset, "xr": OpenXR hand-tracking ones
+    # "bench2dex": DexPilot fingertip optimisation (hand_cfgs/<hand>.yml); "angle": the human joint angles mapped
+    # linearly onto the robot joints (retarget/angle_cfgs/<hand>.yml, see retarget/angle_retargeter.py);
+    # "auto": angle where an angle config exists (Shadow / Sharpa / Wuji), DexPilot otherwise.
+    # Default "bench2dex" (2026-10-28 decision): one position-based method for every hand in data collection.
+    finger_backend: str = "bench2dex"
     retargeter_type: type[RetargeterBase] = Bench2DexFingerRetargeter
 
 
-def _bench2dex_fingers(retargeter_cfg):
+def _bench2dex_fingers(retargeter_cfg, backend: str = "bench2dex"):
     if type(retargeter_cfg) is not SimpleRelativeRetargeterCfg:
         print(f"[vr_teleop] {type(retargeter_cfg).__name__} kept (Bench2Dex fingers replace the relative retargeter only)")
         return retargeter_cfg
     kwargs = {f.name: getattr(retargeter_cfg, f.name) for f in fields(SimpleRelativeRetargeterCfg) if f.name != "retargeter_type"}
-    return Bench2DexFingerRetargeterCfg(**kwargs)
+    return Bench2DexFingerRetargeterCfg(finger_backend=backend, **kwargs)
 
 
 def add_manus_device(devices_cfg, name: str = "manus", source: str = "handtracking", use_xr: bool = False,
                      fingers: str = "bench2dex", **overrides) -> None:
     """Add a Manus device reusing the retargeters (and, with ``use_xr``, the XR anchor) of ``source``.
 
-    ``fingers="bench2dex"`` retargets the fingers with Bench2Dex's Manus-tuned ``RetargetBridge``;
+    ``fingers="bench2dex"`` (default): Bench2Dex DexPilot (fingertip optimisation) for every hand;
+    ``fingers="auto"``: the glove's joint angles mapped onto the robot joints for hands with a
+    ``retarget/angle_cfgs/<hand>.yml`` (Shadow / Sharpa / Wuji, thumb from DexPilot), DexPilot otherwise;
+    ``fingers="angle"`` forces the angle map;
     ``fingers="dexverse"`` keeps the DexVerse dex-retargeting YAMLs (tuned for Quest hand tracking).
     """
     src = devices_cfg.devices[source]
@@ -125,10 +164,10 @@ def add_manus_device(devices_cfg, name: str = "manus", source: str = "handtracki
         overrides.setdefault("xr_cfg", getattr(src, "xr_cfg", None))
     overrides.setdefault("robot_wrist_from_openxr", DEXVERSE_ROBOT_WRIST_FROM_OPENXR)
     retargeters = list(src.retargeters)
-    if fingers == "bench2dex":
-        retargeters = [_bench2dex_fingers(r) for r in retargeters]
+    if fingers in ("bench2dex", "angle", "auto"):
+        retargeters = [_bench2dex_fingers(r, backend=fingers) for r in retargeters]
     elif fingers != "dexverse":
-        raise ValueError(f"fingers must be 'bench2dex' or 'dexverse', got '{fingers}'")
+        raise ValueError(f"fingers must be 'auto', 'bench2dex', 'angle' or 'dexverse', got '{fingers}'")
     devices_cfg.devices[name] = ManusDeviceCfg(retargeters=retargeters, sim_device=src.sim_device, **overrides)
 
 

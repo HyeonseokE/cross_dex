@@ -1,0 +1,24 @@
+# Manus / OpenXR hand joint angles -> Allegro joints: used as the DexPilot prior theta (bench2dex_finger_retargeter)
+# and by the opt-in angle backend. Allegro joint_<f*4+k>.0: k=0 abduction, 1 MCP, 2 PIP, 3 DIP for index (0-3),
+# middle (4-7), ring (8-11); thumb 12-15 (no 1:1 human joint -> no prior). "mult_" names = the other Bench2Dex side.
+low_pass_alpha: 0.6
+prior: {lambda: 0.05, pinch_scale: 0.1, start_cm: 3.0, full_cm: 1.5, joint_weights: {"joint_1.0": 3, "joint_5.0": 3, "joint_9.0": 3}}
+pinch_blend: {fingers: [index, middle, ring], start_cm: 3.0, full_cm: 1.5}   # the prior's pinch gate
+dexpilot_joints: ["joint_12.0", "joint_13.0", "joint_14.0", "joint_15.0"]
+joints:
+  joint_0.0: {features: {}, offset: 0.0, min: -0.47, max: 0.47}
+  joint_1.0: {features: {index_mcp: 1.0}, offset: 0.0, min: -0.2, max: 1.6}
+  joint_2.0: {features: {index_pip: 1.0}, offset: 0.0, min: -0.17, max: 1.7}
+  joint_3.0: {features: {index_dip: 1.0}, offset: 0.0, min: -0.23, max: 1.6}
+  joint_4.0: {features: {}, offset: 0.0, min: -0.47, max: 0.47}
+  joint_5.0: {features: {middle_mcp: 1.0}, offset: 0.0, min: -0.2, max: 1.6}
+  joint_6.0: {features: {middle_pip: 1.0}, offset: 0.0, min: -0.17, max: 1.7}
+  joint_7.0: {features: {middle_dip: 1.0}, offset: 0.0, min: -0.23, max: 1.6}
+  joint_8.0: {features: {}, offset: 0.0, min: -0.47, max: 0.47}
+  joint_9.0: {features: {ring_mcp: 1.0}, offset: 0.0, min: -0.2, max: 1.6}
+  joint_10.0: {features: {ring_pip: 1.0}, offset: 0.0, min: -0.17, max: 1.7}
+  joint_11.0: {features: {ring_dip: 1.0}, offset: 0.0, min: -0.23, max: 1.6}
+  joint_12.0: {features: {}, offset: 0.0, min: 0.26, max: 1.4}
+  joint_13.0: {features: {}, offset: 0.0, min: -0.1, max: 1.16}
+  joint_14.0: {features: {}, offset: 0.0, min: -0.19, max: 1.64}
+  joint_15.0: {features: {}, offset: 0.0, min: -0.16, max: 1.72}

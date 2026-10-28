@@ -7,11 +7,8 @@ retargeting:
   scaling_factor: 1.0
   project_dist: 0.01
   escape_dist: 0.02
-  low_pass_alpha: 0.2
-  hand_offset_xyz:
-  - 0
-  - 0
-  - 0.03
+  low_pass_alpha: 0.5  # 2026-10-28: was 0.2 (~5 frames lag); faster tracking
+  hand_offset_xyz: [0, 0, 0]   # +3 cm z of 2026-10-26 undone (it compensated a wrong glove profile)
   hand_scale_xyz:
   - 1
   - 1.0

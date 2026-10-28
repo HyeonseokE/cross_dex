@@ -3,7 +3,7 @@ retargeting:
   scaling_factor: 1.0
   project_dist: 0.01
   escape_dist: 0.02
-  low_pass_alpha: 0.2
+  low_pass_alpha: 0.5  # 2026-10-28: was 0.2 (~5 frames lag)
 
   hand_offset_xyz: [0.0, -0.006, -0.18]
   hand_scale_xyz: [1.7, 1.5, 1.6]

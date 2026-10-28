@@ -1,0 +1,2059 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot
+  name="RH56DFX_L">
+  <link
+    name="l_base_link">
+    <inertial>
+      <origin
+        xyz="-0.000268668674108991 0.0015636026908947 0.0676652785627349"
+        rpy="0 0 0" />
+      <mass
+        value="0.442813527981768" />
+      <inertia
+        ixx="0.000322835112427508"
+        ixy="-1.36479279308734E-06"
+        ixz="-1.95509333888133E-06"
+        iyy="0.000208328788663727"
+        iyz="-1.18056690447212E-06"
+        izz="0.000184844276743646" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/l_base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.827450980392157 0.83921568627451 0.827450980392157 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/l_base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="left_index_1">
+    <inertial>
+      <origin
+        xyz="0.000461541435806748 0.0116515999092918 -0.00590003371767778"
+        rpy="0 0 0" />
+      <mass
+        value="0.00881197798488192" />
+      <inertia
+        ixx="1.40231256514907E-06"
+        ixy="-1.11031049765784E-07"
+        ixz="-1.50176863585873E-13"
+        iyy="4.33616279511412E-07"
+        iyz="-1.88748416819907E-11"
+        izz="1.46953546409383E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_index_1_joint"
+    type="revolute">
+    <origin
+      xyz="-0.00028533 -0.032168 0.13653"
+      rpy="1.6057 0 0" />
+    <parent
+      link="l_base_link" />
+    <child
+      link="left_index_1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="1.344277"
+      effort="1"
+      velocity="2" />
+  </joint>
+  <link
+    name="left_index_rubber_1">
+    <inertial>
+      <origin
+        xyz="4.68277174120457E-07 -0.000277303856020789 -0.00810702693776179"
+        rpy="0 0 0" />
+      <mass
+        value="0.00100751026337751" />
+      <inertia
+        ixx="9.52671501444302E-08"
+        ixy="1.84036325900436E-12"
+        ixz="1.13718347017134E-12"
+        iyy="6.33345321582835E-08"
+        iyz="-1.10134831421706E-08"
+        izz="8.23781987482187E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_rubber_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_rubber_1.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_index_rubber_1_joint"
+    type="fixed">
+    <origin
+      xyz="0.010962 0.015475 -0.0058991"
+      rpy="-1.6373 1.5708 -1.5708" />
+    <parent
+      link="left_index_1" />
+    <child
+      link="left_index_rubber_1" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_index_2">
+    <inertial>
+      <origin
+        xyz="0.000846459676133157 0.0159699536063371 -0.00510110719069301"
+        rpy="0 0 0" />
+      <mass
+        value="0.00925219566437243" />
+      <inertia
+        ixx="8.02591954199889E-07"
+        ixy="-2.71399260329327E-07"
+        ixz="3.18046037103459E-11"
+        iyy="2.63864748341419E-07"
+        iyz="6.03616925212557E-11"
+        izz="9.31327037342977E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_index_2_joint"
+    type="revolute">
+    <origin
+      xyz="0.0071189 0.031334 -0.0008"
+      rpy="0 0 0" />
+    <parent
+      link="left_index_1" />
+    <child
+      link="left_index_2" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="1.59562"
+      effort="1"
+      velocity="2" />
+      <mimic 
+        joint="left_index_1_joint"
+        multiplier="1.1169"
+        offset="-0.15" />
+  </joint>
+  <link
+    name="left_index_rubber_2">
+    <inertial>
+      <origin
+        xyz="3.71014377972823E-06 0.0158540066839677 -0.000683115137425958"
+        rpy="0 0 0" />
+      <mass
+        value="0.00119004560800986" />
+      <inertia
+        ixx="1.35899798757468E-07"
+        ixy="8.50258176038262E-11"
+        ixz="-8.30283954597281E-12"
+        iyy="2.32721303061557E-08"
+        iyz="-1.59661991933365E-08"
+        izz="1.37431891967755E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_rubber_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_rubber_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_index_rubber_2_joint"
+    type="fixed">
+    <origin
+      xyz="0.0070147 0.012486 -0.0050557"
+      rpy="-1.4508 1.5638 -1.5708" />
+    <parent
+      link="left_index_2" />
+    <child
+      link="left_index_rubber_2" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_index_pad">
+    <inertial>
+      <origin
+        xyz="4.72282110058897E-06 -0.00107358686744947 -0.000867315001026159"
+        rpy="0 0 0" />
+      <mass
+        value="1.74942869080946E-05" />
+      <inertia
+        ixx="1.97791136671661E-11"
+        ixy="8.97449012100217E-15"
+        ixz="-1.07077919025427E-13"
+        iyy="2.4905734214284E-11"
+        iyz="-1.72170853830108E-12"
+        izz="3.95652071926162E-11" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_pad.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_pad.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_index_pad_joint"
+    type="fixed">
+    <origin
+      xyz="-3.0024E-05 0.023788 0.0056217"
+      rpy="0.06969 4.3644E-05 0.00036203" />
+    <parent
+      link="left_index_rubber_2" />
+    <child
+      link="left_index_pad" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_index_tip">
+    <inertial>
+      <origin
+        xyz="-0.000856665300146248 1.89922067794779E-08 -0.00102183808192999"
+        rpy="0 0 0" />
+      <mass
+        value="1.72886638937717E-05" />
+      <inertia
+        ixx="2.56768040770671E-11"
+        ixy="-3.18365589820315E-16"
+        ixz="-2.20292569548206E-12"
+        iyy="1.54551010736424E-11"
+        iyz="-2.29614533759763E-16"
+        izz="3.38497054068354E-11" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_tip.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_index_tip.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_index_tip_joint"
+    type="fixed">
+    <origin
+      xyz="-1.3022E-05 0.031221 0.0024574"
+      rpy="0.013258 -1.1544 -1.5829" />
+    <parent
+      link="left_index_rubber_2" />
+    <child
+      link="left_index_tip" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_middle_1">
+    <inertial>
+      <origin
+        xyz="0.000461541629691434 0.0116515965600647 -0.00590004767005833"
+        rpy="0 0 0" />
+      <mass
+        value="0.00881199030020868" />
+      <inertia
+        ixx="1.402314881009E-06"
+        ixy="-1.1103177744641E-07"
+        ixz="2.87006958572461E-13"
+        iyy="4.33616449238026E-07"
+        iyz="-2.06974793533729E-11"
+        izz="1.46953643689907E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_middle_1_joint"
+    type="revolute">
+    <origin
+      xyz="-0.00028533 -0.01285 0.1371"
+      rpy="1.5708 0 0" />
+    <parent
+      link="l_base_link" />
+    <child
+      link="left_middle_1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="1.344277"
+      effort="1"
+      velocity="2" />
+  </joint>
+  <link
+    name="left_middle_rubber_1">
+    <inertial>
+      <origin
+        xyz="3.76242707489371E-07 -0.000277324370050402 -0.00810714899813504"
+        rpy="0 0 0" />
+      <mass
+        value="0.0010075153682363" />
+      <inertia
+        ixx="9.52684580421518E-08"
+        ixy="1.33553156016871E-12"
+        ixz="1.042819671443E-12"
+        iyy="6.33352914158103E-08"
+        iyz="-1.10143468396073E-08"
+        izz="8.23787642940307E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_rubber_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_rubber_1.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_middle_rubber_1_joint"
+    type="fixed">
+    <origin
+      xyz="0.010962 0.015475 -0.0059"
+      rpy="-1.6373 1.5708 -1.5708" />
+    <parent
+      link="left_middle_1" />
+    <child
+      link="left_middle_rubber_1" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_middle_2">
+    <inertial>
+      <origin
+        xyz="0.00141025127204816 0.0172293351814034 -0.0051009418470411"
+        rpy="0 0 0" />
+      <mass
+        value="0.0100501383248898" />
+      <inertia
+        ixx="1.00700764221843E-06"
+        ixy="-3.53465655492272E-07"
+        ixz="3.99940302421788E-11"
+        iyy="3.12319057843603E-07"
+        iyz="9.53011587542506E-11"
+        izz="1.17275755016607E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_middle_2_joint"
+    type="revolute">
+    <origin
+      xyz="0.0071189 0.031334 -0.0008"
+      rpy="0 0 0" />
+    <parent
+      link="left_middle_1" />
+    <child
+      link="left_middle_2" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="1.59562"
+      effort="1"
+      velocity="2" />
+      <mimic 
+        joint="left_middle_1_joint"
+        multiplier="1.1169"
+        offset="-0.15" />
+  </joint>
+  <link
+    name="left_middle_rubber_2">
+    <inertial>
+      <origin
+        xyz="7.7280108489175E-06 0.0179695904606754 -0.000804044743343377"
+        rpy="0 0 0" />
+      <mass
+        value="0.00130495514940863" />
+      <inertia
+        ixx="1.76870136972793E-07"
+        ixy="1.74860270573956E-10"
+        ixz="-1.8349295119375E-11"
+        iyy="2.53005759725666E-08"
+        iyz="-1.81404682177571E-08"
+        izz="1.7876054155983E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_rubber_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_rubber_2.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_middle_rubber_2_joint"
+    type="fixed">
+    <origin
+      xyz="0.0072845 0.012518 -0.0050018"
+      rpy="-1.4221 1.5657 -1.5708" />
+    <parent
+      link="left_middle_2" />
+    <child
+      link="left_middle_rubber_2" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_middle_pad">
+    <inertial>
+      <origin
+        xyz="9.151649575323E-06 -0.000840645806262336 -0.000949482426872789"
+        rpy="0 0 0" />
+      <mass
+        value="1.80772540251388E-05" />
+      <inertia
+        ixx="1.75941754992311E-11"
+        ixy="2.77833025016137E-15"
+        ixz="-1.92244046682768E-13"
+        iyy="2.64975629801485E-11"
+        iyz="-2.90926190882174E-13"
+        izz="3.75465127391272E-11" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_pad.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_pad.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_middle_pad_joint"
+    type="fixed">
+    <origin
+      xyz="-5.2544E-05 0.027502 0.0054598"
+      rpy="-0.0051797 0 -5.2357E-05" />
+    <parent
+      link="left_middle_rubber_2" />
+    <child
+      link="left_middle_pad" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_middle_tip">
+    <inertial>
+      <origin
+        xyz="-0.000704283150912199 1.7201949642498E-08 -0.00102507469949608"
+        rpy="0 0 0" />
+      <mass
+        value="1.74735221647541E-05" />
+      <inertia
+        ixx="2.66254867244747E-11"
+        ixy="-8.56607522324162E-17"
+        ixz="-2.97431807749547E-12"
+        iyy="1.56734895823109E-11"
+        iyz="-1.96338363593241E-16"
+        izz="3.33104724852485E-11" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_tip.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_middle_tip.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_middle_tip_joint"
+    type="fixed">
+    <origin
+      xyz="-2.1444E-05 0.034794 0.0022343"
+      rpy="0.021285 -1.101 -1.5898" />
+    <parent
+      link="left_middle_rubber_2" />
+    <child
+      link="left_middle_tip" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_ring_1">
+    <inertial>
+      <origin
+        xyz="0.000461494817524277 0.0116511737378697 -0.00589994851254613"
+        rpy="0 0 0" />
+      <mass
+        value="0.00881225131736491" />
+      <inertia
+        ixx="1.4023609373404E-06"
+        ixy="-1.11035394965408E-07"
+        ixz="2.55480359890585E-13"
+        iyy="4.33624681540377E-07"
+        iyz="-7.77690276242677E-12"
+        izz="1.46958459945842E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_ring_1_joint"
+    type="revolute">
+    <origin
+      xyz="-0.00028533 0.006387 0.13691"
+      rpy="1.5184 0 0" />
+    <parent
+      link="l_base_link" />
+    <child
+      link="left_ring_1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="1.344277"
+      effort="1"
+      velocity="2" />
+  </joint>
+  <link
+    name="left_ring_rubber_1">
+    <inertial>
+      <origin
+        xyz="3.97276237074085E-07 -0.000277764184339203 -0.00810761946354124"
+        rpy="0 0 0" />
+      <mass
+        value="0.00100758613637168" />
+      <inertia
+        ixx="9.52792767085873E-08"
+        ixy="9.3671521036911E-13"
+        ixz="3.62426517818737E-13"
+        iyy="6.33418104503754E-08"
+        iyz="-1.10190419744933E-08"
+        izz="8.23832309611864E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_rubber_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_rubber_1.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_ring_rubber_1_joint"
+    type="fixed">
+    <origin
+      xyz="0.010962 0.015475 -0.0059"
+      rpy="-1.6373 1.5708 -1.5708" />
+    <parent
+      link="left_ring_1" />
+    <child
+      link="left_ring_rubber_1" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_ring_2">
+    <inertial>
+      <origin
+        xyz="0.000846463894616276 0.0159699347053668 -0.00510109047393134"
+        rpy="0 0 0" />
+      <mass
+        value="0.00925219955369937" />
+      <inertia
+        ixx="8.02593514012324E-07"
+        ixy="-2.71398953285731E-07"
+        ixz="3.22070489063026E-11"
+        iyy="2.63864681119925E-07"
+        iyz="6.01329936683976E-11"
+        izz="9.31327943786773E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_ring_2_joint"
+    type="revolute">
+    <origin
+      xyz="0.0071189 0.031334 -0.0008"
+      rpy="0 0 0" />
+    <parent
+      link="left_ring_1" />
+    <child
+      link="left_ring_2" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="1.59562"
+      effort="1"
+      velocity="2" />
+      <mimic 
+        joint="left_ring_1_joint"
+        multiplier="1.1169"
+        offset="-0.15" />
+  </joint>
+  <link
+    name="left_ring_rubber_2">
+    <inertial>
+      <origin
+        xyz="0.00104284546218292 0.0157830815140177 0.00127604090326092"
+        rpy="0 0 0" />
+      <mass
+        value="0.0011900510522096" />
+      <inertia
+        ixx="1.35418744149707E-07"
+        ixy="-7.15356862405758E-09"
+        ixz="-1.95071607592085E-09"
+        iyy="2.93921822376163E-08"
+        iyz="-2.9378722813243E-08"
+        izz="1.31791666226389E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_rubber_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_rubber_2.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_ring_rubber_2_joint"
+    type="fixed">
+    <origin
+      xyz="0.0068534 0.012369 -0.0050852"
+      rpy="1.5708 1.5184 1.5708" />
+    <parent
+      link="left_ring_2" />
+    <child
+      link="left_ring_rubber_2" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_ring_pad">
+    <inertial>
+      <origin
+        xyz="-4.94030643549692E-06 -0.00107358706632565 -0.000867313787048102"
+        rpy="0 0 0" />
+      <mass
+        value="1.74942858951091E-05" />
+      <inertia
+        ixx="1.97791820297692E-11"
+        ixy="-1.02094554854047E-14"
+        ixz="1.13379094195E-13"
+        iyy="2.49057330486905E-11"
+        iyz="-1.72170092059304E-12"
+        izz="3.956513413185E-11" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_pad.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_pad.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_ring_pad_joint"
+    type="fixed">
+    <origin
+      xyz="0.0015481 0.022862 0.0085106"
+      rpy="0.19325 0 -0.066635" />
+    <parent
+      link="left_ring_rubber_2" />
+    <child
+      link="left_ring_pad" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_ring_tip">
+    <inertial>
+      <origin
+        xyz="-0.000856665327644918 1.70945193556093E-08 -0.00102183693569345"
+        rpy="0 0 0" />
+      <mass
+        value="1.72886814655676E-05" />
+      <inertia
+        ixx="2.56768444584749E-11"
+        ixy="-3.08326142677964E-16"
+        ixz="-2.20293053403915E-12"
+        iyy="1.54551255925788E-11"
+        iyz="-2.10809793762438E-16"
+        izz="3.38497407009298E-11" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_tip.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_ring_tip.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_ring_tip_joint"
+    type="fixed">
+    <origin
+      xyz="0.0020441 0.030612 0.0062864"
+      rpy="-0.010923 -1.0309 -1.627" />
+    <parent
+      link="left_ring_rubber_2" />
+    <child
+      link="left_ring_tip" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_little_1">
+    <inertial>
+      <origin
+        xyz="0.000461475145814225 0.011651147716913 -0.00589994431843319"
+        rpy="0 0 0" />
+      <mass
+        value="0.00881226910619359" />
+      <inertia
+        ixx="1.40236349914062E-06"
+        ixy="-1.1103737933177E-07"
+        ixz="9.26298240945681E-13"
+        iyy="4.33626325901594E-07"
+        iyz="-7.54482753315849E-12"
+        izz="1.46958855372561E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_little_1_joint"
+    type="revolute">
+    <origin
+      xyz="-0.00028533 0.025587 0.1357"
+      rpy="1.4661 0 0" />
+    <parent
+      link="l_base_link" />
+    <child
+      link="left_little_1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="1.344277"
+      effort="1"
+      velocity="2" />
+  </joint>
+  <link
+    name="left_little_rubber_1">
+    <inertial>
+      <origin
+        xyz="3.9661069733965E-07 -0.000277754419665203 -0.00810761540409644"
+        rpy="0 0 0" />
+      <mass
+        value="0.00100758672179722" />
+      <inertia
+        ixx="9.52792831249349E-08"
+        ixy="9.76489467985872E-13"
+        ixz="3.40096311213686E-13"
+        iyy="6.33417927153541E-08"
+        iyz="-1.10190652424395E-08"
+        izz="8.23833299006405E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_rubber_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_rubber_1.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_little_rubber_1_joint"
+    type="fixed">
+    <origin
+      xyz="0.010962 0.015475 -0.0059"
+      rpy="-1.6373 1.5708 -1.5708" />
+    <parent
+      link="left_little_1" />
+    <child
+      link="left_little_rubber_1" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_little_2">
+    <inertial>
+      <origin
+        xyz="-9.66953409735488E-05 0.0131703851115681 -0.0051009352074308"
+        rpy="0 0 0" />
+      <mass
+        value="0.0073597603922405" />
+      <inertia
+        ixx="4.52977984459269E-07"
+        ixy="-1.39937157845321E-07"
+        ixz="2.17043248135716E-11"
+        iyy="1.74899587515266E-07"
+        iyz="4.793455924041E-11"
+        izz="5.20964333649667E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_little_2_joint"
+    type="revolute">
+    <origin
+      xyz="0.0071189 0.031334 -0.0008"
+      rpy="0 0 0" />
+    <parent
+      link="left_little_1" />
+    <child
+      link="left_little_2" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="1.59562"
+      effort="1"
+      velocity="2" />
+      <mimic 
+        joint="left_little_1_joint"
+        multiplier="1.1169"
+        offset="-0.15" />
+  </joint>
+  <link
+    name="left_little_rubber_2">
+    <inertial>
+      <origin
+        xyz="7.99800886075452E-08 0.0112749035859891 -0.000128893404753347"
+        rpy="0 0 0" />
+      <mass
+        value="0.000944677110750505" />
+      <inertia
+        ixx="7.27256998745925E-08"
+        ixy="8.79447839606861E-12"
+        ixz="-4.11179878788017E-13"
+        iyy="1.9751675428608E-08"
+        iyz="-1.31114374351836E-08"
+        izz="7.28078257130206E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_rubber_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_rubber_2.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_little_rubber_2_joint"
+    type="fixed">
+    <origin
+      xyz="0.0060598 0.012028 -0.0051"
+      rpy="3.1407 1.5701 3.1338" />
+    <parent
+      link="left_little_2" />
+    <child
+      link="left_little_rubber_2" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_little_pad">
+    <inertial>
+      <origin
+        xyz="4.26351731697139E-09 -0.000945394972293657 -0.000793541046852669"
+        rpy="0 0 0" />
+      <mass
+        value="1.46539353671065E-05" />
+      <inertia
+        ixx="1.40180735091283E-11"
+        ixy="1.6193464210242E-17"
+        ixz="1.17587638114339E-16"
+        iyy="2.05087141535222E-11"
+        iyz="-1.09095131218755E-12"
+        izz="3.10123565645623E-11" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_pad.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_pad.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_little_pad_joint"
+    type="fixed">
+    <origin
+      xyz="0 0.015811 0.0062245"
+      rpy="0.23432 -0.00072425 0" />
+    <parent
+      link="left_little_rubber_2" />
+    <child
+      link="left_little_pad" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_little_tip">
+    <inertial>
+      <origin
+        xyz="-0.000679511004398545 -7.33584859524683E-09 -0.0009899693704125"
+        rpy="0 0 0" />
+      <mass
+        value="1.82383852219562E-05" />
+      <inertia
+        ixx="2.78570131965694E-11"
+        ixy="-6.23802723801218E-17"
+        ixz="-2.37868618847864E-12"
+        iyy="1.66773044526593E-11"
+        iyz="4.01471577678487E-17"
+        izz="3.57549531689912E-11" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_tip.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_little_tip.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_little_tip_joint"
+    type="fixed">
+    <origin
+      xyz="0 0.023528 0.0036479"
+      rpy="0.0019559 -1.1915 -1.5726" />
+    <parent
+      link="left_little_rubber_2" />
+    <child
+      link="left_little_tip" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="l_plam">
+    <inertial>
+      <origin
+        xyz="0.00487540843079473 -0.00792635358921371 0.000407295131145527"
+        rpy="0 0 0" />
+      <mass
+        value="0.0103867697224328" />
+      <inertia
+        ixx="4.32579238773537E-06"
+        ixy="1.82986381074143E-06"
+        ixz="-1.24431557170631E-07"
+        iyy="5.02135147678096E-06"
+        iyz="6.0880720395417E-07"
+        izz="9.01588192510949E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/l_plam.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/l_plam.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="l_plam_joint"
+    type="fixed">
+    <origin
+      xyz="0.014363 0.0044514 0.10148"
+      rpy="1.5708 0 1.5708" />
+    <parent
+      link="l_base_link" />
+    <child
+      link="l_plam" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_thumb_1">
+    <inertial>
+      <origin
+        xyz="0.000675346448543043 -0.00433551697891771 -0.00508780193489456"
+        rpy="0 0 0" />
+      <mass
+        value="0.0048541771537782" />
+      <inertia
+        ixx="1.96094051160198E-07"
+        ixy="3.4858314687744E-08"
+        ixz="-3.39249138133517E-09"
+        iyy="1.43278984955152E-07"
+        iyz="8.19838067662732E-09"
+        izz="1.68938152839344E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.827450980392157 0.83921568627451 0.827450980392157 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_thumb_1_joint"
+    type="revolute">
+    <origin
+      xyz="0.01696 -0.02045 0.0667"
+      rpy="0 0 0" />
+    <parent
+      link="l_base_link" />
+    <child
+      link="left_thumb_1" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="1.310384"
+      effort="1"
+      velocity="2" />
+  </joint>
+  <link
+    name="left_thumb_2">
+    <inertial>
+      <origin
+        xyz="0.0217021678253001 0.0140075970723664 0.00802372797249212"
+        rpy="0 0 0" />
+      <mass
+        value="0.0314644827364552" />
+      <inertia
+        ixx="4.77086341809611E-06"
+        ixy="-2.24566024867355E-06"
+        ixz="1.95467941085415E-09"
+        iyy="5.25069497924692E-06"
+        iyz="-6.67201748128018E-10"
+        izz="9.41389275530489E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_thumb_2_joint"
+    type="revolute">
+    <origin
+      xyz="0.010704 -0.0090376 -0.0065"
+      rpy="1.5708 0 -1.309" />
+    <parent
+      link="left_thumb_1" />
+    <child
+      link="left_thumb_2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0.523477"
+      effort="1"
+      velocity="2" />
+  </joint>
+  <link
+    name="left_thumb_rubber_1">
+    <inertial>
+      <origin
+        xyz="5.40162647625353E-05 0.00265236291170259 -0.00524128392726222"
+        rpy="0 0 0" />
+      <mass
+        value="0.0014906283411173" />
+      <inertia
+        ixx="1.88752644928606E-07"
+        ixy="-3.8026755003658E-11"
+        ixz="-3.8765284624088E-10"
+        iyy="8.68559982474995E-08"
+        iyz="3.72404130676969E-09"
+        izz="2.26622483357037E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_rubber_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_rubber_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_thumb_rubber_1_joint"
+    type="fixed">
+    <origin
+      xyz="0.013047 0.031386 0.0079991"
+      rpy="3.1382 1.5604 -0.95011" />
+    <parent
+      link="left_thumb_2" />
+    <child
+      link="left_thumb_rubber_1" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_thumb_3">
+    <inertial>
+      <origin
+        xyz="0.00916392494072082 -0.000213746989467434 0.00749980580117554"
+        rpy="0 0 0" />
+      <mass
+        value="0.00637729293152042" />
+      <inertia
+        ixx="7.06808324923041E-07"
+        ixy="-1.80649444240681E-07"
+        ixz="-4.54605002004831E-12"
+        iyy="5.60096873247658E-07"
+        iyz="-6.4139500191323E-12"
+        izz="8.41963898391664E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_3.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_3.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_thumb_3_joint"
+    type="revolute">
+    <origin
+      xyz="0.041584 0.037508 0.0005"
+      rpy="0 0 0" />
+    <parent
+      link="left_thumb_2" />
+    <child
+      link="left_thumb_3" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0.606844"
+      effort="1"
+      velocity="2" />
+      <mimic 
+        joint="left_thumb_2_joint"
+        multiplier="1.1425"
+        offset="0" />
+  </joint>
+  <link
+    name="left_thumb_rubber_2">
+    <inertial>
+      <origin
+        xyz="0.000162365997336933 -0.00288606632154562 -0.00905409083254546"
+        rpy="0 0 0" />
+      <mass
+        value="0.000712407776191055" />
+      <inertia
+        ixx="4.20918453267061E-08"
+        ixy="1.57340698262729E-10"
+        ixz="1.3516984445783E-10"
+        iyy="5.19680969543388E-08"
+        iyz="-8.47498354856299E-09"
+        izz="3.43794675555184E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_rubber_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_rubber_2.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_thumb_rubber_2_joint"
+    type="fixed">
+    <origin
+      xyz="0.00507 0.011874 0.0075"
+      rpy="3.1416 1.5531 -1.0475" />
+    <parent
+      link="left_thumb_3" />
+    <child
+      link="left_thumb_rubber_2" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_thumb_4">
+    <inertial>
+      <origin
+        xyz="0.00556381842605763 0.00321786565136162 0.00598762078210308"
+        rpy="0 0 0" />
+      <mass
+        value="0.00250044545642775" />
+      <inertia
+        ixx="7.83011856485637E-08"
+        ixy="-4.7057697220776E-08"
+        ixz="-1.10925668134676E-10"
+        iyy="7.83149579014379E-08"
+        iyz="-2.74917415975889E-10"
+        izz="1.30863153598266E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_4.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.890196078431372 0.890196078431372 0.913725490196078 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_4.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_thumb_4_joint"
+    type="revolute">
+    <origin
+      xyz="0.018393 0.013222 0.0015"
+      rpy="0 0 0" />
+    <parent
+      link="left_thumb_3" />
+    <child
+      link="left_thumb_4" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0.430866"
+      effort="1"
+      velocity="2" />
+      <mimic 
+        joint="left_thumb_2_joint"
+        multiplier="0.8582"
+        offset="0.1" />
+  </joint>
+  <link
+    name="left_thumb_rubber_3">
+    <inertial>
+      <origin
+        xyz="0.000268126145379105 -0.00224962169943535 -0.00745388764640809"
+        rpy="0 0 0" />
+      <mass
+        value="0.00232428792968957" />
+      <inertia
+        ixx="1.17389753346854E-07"
+        ixy="-2.01766145271162E-10"
+        ixz="-5.32341724071498E-12"
+        iyy="6.66695035665084E-08"
+        iyz="5.60795555686443E-09"
+        izz="1.17533665402913E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_rubber_3.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_rubber_3.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_thumb_rubber_3_joint"
+    type="fixed">
+    <origin
+      xyz="0.001618 0.009709 0.006"
+      rpy="3.1415 1.5348 -0.55813" />
+    <parent
+      link="left_thumb_4" />
+    <child
+      link="left_thumb_rubber_3" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_thumb_pad">
+    <inertial>
+      <origin
+        xyz="-3.37221102708618E-08 0.00163135155510163 -0.00128514999690035"
+        rpy="0 0 0" />
+      <mass
+        value="4.94551999339821E-05" />
+      <inertia
+        ixx="1.38213576910352E-10"
+        ixy="4.70832523459267E-16"
+        ixz="1.49104319677513E-15"
+        iyy="8.81925937138397E-11"
+        iyz="-2.69646775933514E-12"
+        izz="1.80759780259597E-10" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_pad.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_pad.STL" />
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.25</mu>  <!-- 动摩擦系数 -->
+            <mu2>0.25</mu2> <!-- 静摩擦系数 -->
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+  </link>
+  <joint
+    name="left_thumb_pad_joint"
+    type="fixed">
+    <origin
+      xyz="4.8581E-05 -0.007836 -0.0013499"
+      rpy="0.28005 -0.035991 -1.4391E-05" />
+    <parent
+      link="left_thumb_rubber_3" />
+    <child
+      link="left_thumb_pad" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_thumb_tip">
+    <inertial>
+      <origin
+        xyz="2.50035524579084E-05 -0.00144636222857047 -0.00180325426020556"
+        rpy="0 0 0" />
+      <mass
+        value="6.08897929255959E-05" />
+      <inertia
+        ixx="1.79108473399612E-10"
+        ixy="4.05362271422044E-13"
+        ixz="-3.7128202926775E-13"
+        iyy="1.33990932373892E-10"
+        iyz="-2.89649540571285E-11"
+        izz="2.06216102977108E-10" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_tip.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.0549019607843137 0.0549019607843137 0.0549019607843137 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="/workspace/assets/bench2dex/URDF-Zoo/ur5+RH56DFX/meshes/hand_left/left_thumb_tip.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_thumb_tip_joint"
+    type="fixed">
+    <origin
+      xyz="0.00028944 -0.014777 -0.0080365"
+      rpy="1.3794 -0.03325 0.013534" />
+    <parent
+      link="left_thumb_rubber_3" />
+    <child
+      link="left_thumb_tip" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+</robot>

@@ -1,0 +1,66 @@
+# Manus / OpenXR hand joint angles -> Sharpa Wave joints (direct linear map, see ../angle_retargeter.py).
+# Units rad. q = sum(gain * feature) + offset, clipped to [min, max]. Hot-reloaded while teleop runs.
+# 2026-10-28: flexion joints follow the matching human joint 1:1 (flexion positive, checked against the DexPilot
+# reference); abduction / spread joints held at 0 until their sign is checked in VR; the thumb joints follow the
+# human thumb angles too (sign / offset fitted against DexPilot on the 2026-10-28 recording); the glove reports thumb
+# MCP ~ 0, so the robot thumb MCP also takes 0.5 x thumb IP. Human little finger -> pinky.
+low_pass_alpha: 0.6
+# DexPilot (default teleop backend) adds lambda * sum (q - theta)^2 with theta = this joint map (see
+# bench2dex_finger_retargeter._install_prior); weights of the thumb and of a finger pinching the thumb are scaled
+# by pinch_scale between start_cm and full_cm so pinches close exactly. lambda 0 = plain DexPilot.
+prior: {lambda: 0.05, pinch_scale: 0.1, start_cm: 3.0, full_cm: 1.5}
+pinch_blend: {fingers: [index, middle, ring], start_cm: 3.0, full_cm: 1.5}   # also the prior's pinch gate
+# policy 2026-10-28: the four fingers follow the human joint angles 1:1; the thumb is the position-based
+# DexPilot solution (dexpilot_joints), seeded from the angle posture every frame. No pinch blend.
+
+joints: {}
+right:
+  dexpilot_joints: ["right_thumb_CMC_FE", "right_thumb_CMC_AA", "right_thumb_MCP_FE", "right_thumb_MCP_AA", "right_thumb_IP"]
+  joints:
+    right_index_MCP_FE: {features: {index_mcp: 1.0}, offset: 0.0, min: -0.17, max: 1.57}
+    right_index_MCP_AA: {features: {index_spread: -1.0}, offset: 0.0, min: -0.35, max: 0.35}   # abduction, sign by FK 2026-10-28
+    right_index_PIP: {features: {index_pip: 1.0}, offset: 0.0, min: 0.0, max: 1.75}
+    right_index_DIP: {features: {index_dip: 1.0}, offset: 0.0, min: 0.0, max: 1.4}
+    right_middle_MCP_FE: {features: {middle_mcp: 1.0}, offset: 0.0, min: -0.17, max: 1.57}
+    right_middle_MCP_AA: {features: {middle_spread: -1.0}, offset: 0.0, min: -0.35, max: 0.35}   # abduction, sign by FK 2026-10-28
+    right_middle_PIP: {features: {middle_pip: 1.0}, offset: 0.0, min: 0.0, max: 1.75}
+    right_middle_DIP: {features: {middle_dip: 1.0}, offset: 0.0, min: 0.0, max: 1.4}
+    right_ring_MCP_FE: {features: {ring_mcp: 1.0}, offset: 0.0, min: -0.17, max: 1.57}
+    right_ring_MCP_AA: {features: {ring_spread: -1.0}, offset: 0.0, min: -0.35, max: 0.35}   # abduction, sign by FK 2026-10-28
+    right_ring_PIP: {features: {ring_pip: 1.0}, offset: 0.0, min: 0.0, max: 1.75}
+    right_ring_DIP: {features: {ring_dip: 1.0}, offset: 0.0, min: 0.0, max: 1.4}
+    right_pinky_MCP_FE: {features: {little_mcp: 1.0}, offset: 0.0, min: -0.17, max: 1.57}
+    right_pinky_MCP_AA: {features: {little_spread: -1.0}, offset: 0.0, min: -0.35, max: 0.35}   # abduction, sign by FK 2026-10-28
+    right_pinky_PIP: {features: {little_pip: 1.0}, offset: 0.0, min: 0.0, max: 1.75}
+    right_pinky_DIP: {features: {little_dip: 1.0}, offset: 0.0, min: 0.0, max: 1.4}
+    right_pinky_CMC: {features: {}, offset: 0.0, min: 0.0, max: 0.26}
+    right_thumb_CMC_FE: {features: {thumb_cmc: 1.79}, offset: -0.57, min: -0.17, max: 1.92}   # thumb, joint map (fitted sign/offset 2026-10-28)
+    right_thumb_CMC_AA: {features: {thumb_abd: -0.50}, offset: 0.30, min: -0.35, max: 0.35}   # thumb, joint map (fitted sign/offset 2026-10-28)
+    right_thumb_MCP_FE: {features: {thumb_mcp: 0.50, thumb_ip: 0.25}, offset: 0.60, min: -0.52, max: 1.4}   # thumb, joint map (fitted sign/offset 2026-10-28)
+    right_thumb_MCP_AA: {features: {}, offset: 0.0, min: -0.35, max: 0.35}   # thumb, joint map (fitted sign/offset 2026-10-28)
+    right_thumb_IP: {features: {thumb_ip: -0.50}, offset: 0.74, min: 0.0, max: 1.75}   # thumb, joint map (fitted sign/offset 2026-10-28)
+left:
+  dexpilot_joints: ["left_thumb_CMC_FE", "left_thumb_CMC_AA", "left_thumb_MCP_FE", "left_thumb_MCP_AA", "left_thumb_IP"]
+  joints:
+    left_index_MCP_FE: {features: {index_mcp: 1.0}, offset: 0.0, min: -0.17, max: 1.57}
+    left_index_MCP_AA: {features: {index_spread: -1.0}, offset: 0.0, min: -0.35, max: 0.35}   # abduction, sign by FK 2026-10-28
+    left_index_PIP: {features: {index_pip: 1.0}, offset: 0.0, min: 0.0, max: 1.75}
+    left_index_DIP: {features: {index_dip: 1.0}, offset: 0.0, min: 0.0, max: 1.4}
+    left_middle_MCP_FE: {features: {middle_mcp: 1.0}, offset: 0.0, min: -0.17, max: 1.57}
+    left_middle_MCP_AA: {features: {middle_spread: -1.0}, offset: 0.0, min: -0.35, max: 0.35}   # abduction, sign by FK 2026-10-28
+    left_middle_PIP: {features: {middle_pip: 1.0}, offset: 0.0, min: 0.0, max: 1.75}
+    left_middle_DIP: {features: {middle_dip: 1.0}, offset: 0.0, min: 0.0, max: 1.4}
+    left_ring_MCP_FE: {features: {ring_mcp: 1.0}, offset: 0.0, min: -0.17, max: 1.57}
+    left_ring_MCP_AA: {features: {ring_spread: -1.0}, offset: 0.0, min: -0.35, max: 0.35}   # abduction, sign by FK 2026-10-28
+    left_ring_PIP: {features: {ring_pip: 1.0}, offset: 0.0, min: 0.0, max: 1.75}
+    left_ring_DIP: {features: {ring_dip: 1.0}, offset: 0.0, min: 0.0, max: 1.4}
+    left_pinky_MCP_FE: {features: {little_mcp: 1.0}, offset: 0.0, min: -0.17, max: 1.57}
+    left_pinky_MCP_AA: {features: {little_spread: -1.0}, offset: 0.0, min: -0.35, max: 0.35}   # abduction, sign by FK 2026-10-28
+    left_pinky_PIP: {features: {little_pip: 1.0}, offset: 0.0, min: 0.0, max: 1.75}
+    left_pinky_DIP: {features: {little_dip: 1.0}, offset: 0.0, min: 0.0, max: 1.4}
+    left_pinky_CMC: {features: {}, offset: 0.0, min: 0.0, max: 0.26}
+    left_thumb_CMC_FE: {features: {thumb_cmc: 1.79}, offset: -0.57, min: -0.17, max: 1.92}   # thumb, joint map (fitted sign/offset 2026-10-28)
+    left_thumb_CMC_AA: {features: {thumb_abd: -0.50}, offset: 0.30, min: -0.35, max: 0.35}   # thumb, joint map (fitted sign/offset 2026-10-28)
+    left_thumb_MCP_FE: {features: {thumb_mcp: 0.50, thumb_ip: 0.25}, offset: 0.60, min: -0.52, max: 1.4}   # thumb, joint map (fitted sign/offset 2026-10-28)
+    left_thumb_MCP_AA: {features: {}, offset: 0.0, min: -0.35, max: 0.35}   # thumb, joint map (fitted sign/offset 2026-10-28)
+    left_thumb_IP: {features: {thumb_ip: -0.50}, offset: 0.74, min: 0.0, max: 1.75}   # thumb, joint map (fitted sign/offset 2026-10-28)

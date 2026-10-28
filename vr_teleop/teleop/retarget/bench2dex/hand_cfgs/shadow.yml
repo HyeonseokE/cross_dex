@@ -3,12 +3,10 @@ retargeting:
   scaling_factor: 1.0
   project_dist: 0.01
   escape_dist: 0.02
-  low_pass_alpha: 0.2
+  low_pass_alpha: 0.5  # 2026-10-28: was 0.2 (~5 frames lag); faster tracking
 
   hand_offset_xyz: [0, 0.01, 0.05]
-  # 2026-10-26: x0.9 after importing the operator's Manus Core calibration (longer finger segments -> the fist
-  # retargeted ~15% less flexion than with the default glove profile and the pan slipped). Was [1, 1.05, 0.9].
-  hand_scale_xyz: [0.9, 0.945, 0.81]
+  hand_scale_xyz: [1, 1.05, 0.9]   # Bench2Dex value (a x0.9 tweak of 2026-10-27 was undone: it compensated a wrong glove profile)
   # Quest/OpenXR (--teleop-device quest): metric hand joints, so the Manus-tuned scale above
   # does not apply. Uniform scale = robot/human open-hand wrist->tip length for an average
   # adult hand (~19 cm wrist->middle tip); tune per operator (hot-reloaded).

@@ -1,0 +1,47 @@
+# Manus / OpenXR hand joint angles -> LEAP joints (direct linear map, see ../angle_retargeter.py).
+# Units rad. q = sum(gain * feature) + offset, clipped to [min, max]. Hot-reloaded while teleop runs.
+#
+# LEAP joints (URDF names): index 1 MCP flex, 0 MCP side (abduction), 2 PIP, 3 DIP; middle 5/4/6/7; ring 9/8/10/11;
+# thumb 12 CMC flex, 13 CMC rotation (opposition), 14 MCP, 15 IP. Flexion is positive on 1/2/3, 5/6/7, 9/10/11,
+# 14, 15 (checked by FK, 2026-10-28). Human little finger is not used (4-finger hand).
+# Human angle ranges seen on the operator (2026-10-26 recording): MCP 0.1-1.3, PIP 0-1.5, DIP 0.1-0.9, thumb
+# cmc 0.2-0.5, oppose 0.5-1.4.
+low_pass_alpha: 0.6
+# DexPilot (default teleop backend) adds lambda * sum (q - theta)^2 with theta = this joint map (see
+# bench2dex_finger_retargeter._install_prior); weights of the thumb and of a finger pinching the thumb are scaled
+# by pinch_scale between start_cm and full_cm so pinches close exactly. lambda 0 = plain DexPilot.
+prior: {lambda: 0.1, pinch_scale: 0.1, start_cm: 3.0, full_cm: 1.5, joint_weights: {"1": 3, "5": 3, "9": 3}}
+pinch_blend: {fingers: [index, middle, ring], start_cm: 3.0, full_cm: 1.5}   # also the prior's pinch gate
+# pinch: near a thumb-fingertip contact the involved joints follow the DexPilot (fingertip) solution
+# Thumb: the LEAP thumb axes (12 CMC flex, 13 CMC rotation, 14 MCP, 15 IP) have no 1:1 human joint and the glove
+# reports thumb MCP ~ 0, so the thumb comes from the Bench2Dex DexPilot solution (hand_cfgs/leap.yml) and the other
+# 12 joints from the angle map below. Remove this list to use the fitted thumb map instead.
+dexpilot_joints: ["12", "13", "14", "15"]
+
+joints:
+  # index
+  "1":  {features: {index_mcp: 1.0}, offset: 0.0, min: -0.3, max: 2.2}
+  "0":  {features: {index_spread: 0.0}, offset: 0.0, min: -0.5, max: 0.5}   # abduction off until its sign is checked in VR
+  "2":  {features: {index_pip: 1.0}, offset: 0.0, min: -0.2, max: 1.85}
+  "3":  {features: {index_dip: 1.0}, offset: 0.0, min: -0.2, max: 2.0}
+  # middle
+  "5":  {features: {middle_mcp: 1.0}, offset: 0.0, min: -0.3, max: 2.2}
+  "4":  {features: {middle_spread: 0.0}, offset: 0.0, min: -0.5, max: 0.5}
+  "6":  {features: {middle_pip: 1.0}, offset: 0.0, min: -0.2, max: 1.85}
+  "7":  {features: {middle_dip: 1.0}, offset: 0.0, min: -0.2, max: 2.0}
+  # ring
+  "9":  {features: {ring_mcp: 1.0}, offset: 0.0, min: -0.3, max: 2.2}
+  "8":  {features: {ring_spread: 0.0}, offset: 0.0, min: -0.5, max: 0.5}
+  "10": {features: {ring_pip: 1.0}, offset: 0.0, min: -0.2, max: 1.85}
+  "11": {features: {ring_dip: 1.0}, offset: 0.0, min: -0.2, max: 2.0}
+  # thumb: fitted offline (ridge least squares, 2026-10-28, operator recording of 10-26) so that the robot
+  # thumb-tip distances to the index / middle / ring tips follow the human ones (x1.29 hand-size scale):
+  # rms 1.2 cm, pinch closes to 2.3 cm. The glove reports thumb_mcp ~ 0 always, so 14 / 15 lean on thumb_ip and
+  # thumb_cmc. Tune in VR by hot-reload if the thumb looks wrong.
+  "12": {features: {thumb_cmc: 0.1, thumb_oppose: -0.15, thumb_ip: 0.98, index_mcp: -0.08}, offset: 0.31, min: -0.35, max: 2.0}
+  "13": {features: {thumb_cmc: 1.27, thumb_oppose: 0.15, thumb_ip: 0.46, index_mcp: 1.12}, offset: -1.54, min: -0.47, max: 2.4}
+  "14": {features: {thumb_cmc: 0.84, thumb_oppose: 0.25, thumb_ip: -1.81, index_mcp: 0.35}, offset: 0.65, min: -1.2, max: 1.9}
+  "15": {features: {thumb_cmc: -0.57, thumb_oppose: 0.5, thumb_ip: 1.49, index_mcp: -0.06}, offset: 0.22, min: -1.3, max: 1.8}
+
+left:
+  joints: {}   # same map; spread features are already signed "toward the thumb" on both hands

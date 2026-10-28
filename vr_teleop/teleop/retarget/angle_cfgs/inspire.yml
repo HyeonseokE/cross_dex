@@ -1,0 +1,43 @@
+# Manus / OpenXR hand joint angles -> Inspire RH56DFX joints (direct linear map, see ../angle_retargeter.py).
+# Units rad. q = sum(gain * feature) + offset, clipped to [min, max]. Hot-reloaded while teleop runs.
+# 2026-10-28: flexion joints follow the matching human joint 1:1 (flexion positive, checked against the DexPilot
+# reference); abduction / spread joints held at 0 until their sign is checked in VR; the thumb comes from the
+# Bench2Dex DexPilot solution (dexpilot_joints) because its axes have no 1:1 human joint and the glove reports
+# thumb MCP ~ 0. Human little finger -> little.
+low_pass_alpha: 0.6
+# DexPilot (default teleop backend) adds lambda * sum (q - theta)^2 with theta = this joint map (see
+# bench2dex_finger_retargeter._install_prior); weights of the thumb and of a finger pinching the thumb are scaled
+# by pinch_scale between start_cm and full_cm so pinches close exactly. lambda 0 = plain DexPilot.
+prior: {lambda: 0.0, pinch_scale: 0.1, start_cm: 3.0, full_cm: 1.5}
+pinch_blend: {fingers: [index, middle, ring], start_cm: 3.0, full_cm: 1.5}   # also the prior's pinch gate
+# pure joint-angle map (2026-10-28): no DexPilot involvement for this human-like hand
+
+joints: {}
+right:
+  joints:
+    right_index_1_joint: {features: {index_mcp: 1.0, index_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.34}
+    right_index_2_joint: {features: {index_mcp: 1.0, index_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.60}   # mimic in sim
+    right_middle_1_joint: {features: {middle_mcp: 1.0, middle_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.34}
+    right_middle_2_joint: {features: {middle_mcp: 1.0, middle_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.60}   # mimic in sim
+    right_ring_1_joint: {features: {ring_mcp: 1.0, ring_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.34}
+    right_ring_2_joint: {features: {ring_mcp: 1.0, ring_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.60}   # mimic in sim
+    right_little_1_joint: {features: {little_mcp: 1.0, little_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.34}
+    right_little_2_joint: {features: {little_mcp: 1.0, little_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.60}   # mimic in sim
+    right_thumb_1_joint: {features: {}, offset: 0.0, min: 0.0, max: 1.31}   # DexPilot
+    right_thumb_2_joint: {features: {}, offset: 0.0, min: 0.0, max: 0.52}   # DexPilot
+    right_thumb_3_joint: {features: {}, offset: 0.0, min: 0.0, max: 0.61}   # DexPilot
+    right_thumb_4_joint: {features: {}, offset: 0.0, min: 0.0, max: 0.43}   # DexPilot
+left:
+  joints:
+    left_index_1_joint: {features: {index_mcp: 1.0, index_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.34}
+    left_index_2_joint: {features: {index_mcp: 1.0, index_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.60}   # mimic in sim
+    left_middle_1_joint: {features: {middle_mcp: 1.0, middle_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.34}
+    left_middle_2_joint: {features: {middle_mcp: 1.0, middle_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.60}   # mimic in sim
+    left_ring_1_joint: {features: {ring_mcp: 1.0, ring_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.34}
+    left_ring_2_joint: {features: {ring_mcp: 1.0, ring_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.60}   # mimic in sim
+    left_little_1_joint: {features: {little_mcp: 1.0, little_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.34}
+    left_little_2_joint: {features: {little_mcp: 1.0, little_pip: 0.5}, offset: 0.0, min: 0.0, max: 1.60}   # mimic in sim
+    left_thumb_1_joint: {features: {}, offset: 0.0, min: 0.0, max: 1.31}   # DexPilot
+    left_thumb_2_joint: {features: {}, offset: 0.0, min: 0.0, max: 0.52}   # DexPilot
+    left_thumb_3_joint: {features: {}, offset: 0.0, min: 0.0, max: 0.61}   # DexPilot
+    left_thumb_4_joint: {features: {}, offset: 0.0, min: 0.0, max: 0.43}   # DexPilot

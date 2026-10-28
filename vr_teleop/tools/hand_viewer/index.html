@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hand Grid Viewer</title>
+<style>
+  :root { --bg:#14171c; --panel:#1c2027; --line:#2c323c; --fg:#dfe4ea; --muted:#8a93a0; --acc:#4fa3ff; --warn:#ffae42; --bad:#ff5d73; --ok:#58d68d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:13px/1.4 system-ui, sans-serif; height:100vh; display:flex; }
+  #viewport { flex:1; position:relative; min-width:0; }
+  canvas { display:block; width:100%; height:100%; }
+  aside { width:330px; overflow-y:auto; background:var(--panel); border-left:1px solid var(--line); padding:10px 12px; }
+  h1 { font-size:15px; margin:0 0 6px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:14px 0 6px; border-top:1px solid var(--line); padding-top:10px; }
+  .row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:4px 0; }
+  button { background:#262c35; color:var(--fg); border:1px solid var(--line); border-radius:4px; padding:3px 8px; font:inherit; cursor:pointer; }
+  button.on { background:var(--acc); color:#0b1220; border-color:var(--acc); }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  td, th { padding:1px 4px; border-bottom:1px solid #232831; text-align:right; }
+  th { color:var(--muted); font-weight:500; } td:first-child, th:first-child { text-align:left; }
+  .err { color:var(--bad); white-space:pre-wrap; }
+  .muted { color:var(--muted); }
+  #hud { position:absolute; left:10px; top:8px; font-size:12px; color:var(--muted); pointer-events:none; }
+  #hud b { color:var(--fg); }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:3px; vertical-align:-1px; }
+  .lim { color:var(--warn); }
+</style>
+</head>
+<body>
+<div id="viewport"><canvas id="c"></canvas><div id="hud"></div></div>
+<aside>
+  <h1>Hand Grid Viewer</h1>
+  <div class="muted">글러브 1개 → 6손 동시 리타게팅. 로봇에는 아무것도 보내지 않음.</div>
+  <div id="err" class="err"></div>
+  <h2>표시</h2>
+  <div class="row"><button id="bAngle" class="on">각도 매핑 (회색)</button><button id="bDex" class="on">DexPilot (파랑)</button><button id="bSkel" class="on">사람 손 뼈대</button></div>
+  <div class="row"><label class="muted" style="min-width:92px">DexPilot 투명도</label><input type="range" id="dexOp" min="0.2" max="1" step="0.05" value="0.45"><span class="v" id="dexOpV">0.45</span></div>
+  <div class="row"><button id="bCam">카메라 초기화</button></div>
+  <div class="muted">두 모델을 각각 켜고 끌 수 있습니다. 각도 매핑 모델은 angle_cfgs/&lt;hand&gt;.yml이 있는 손(shadow·sharpa·wuji)에만 있고, DexPilot 모델은 6손 모두 있습니다(텔레옵 정책: 각도 설정이 있는 손은 각도+DexPilot 엄지, 나머지는 DexPilot). yml 저장 시 2초 내 반영.</div>
+  <h2>손</h2>
+  <div id="hands"></div>
+  <h2>관절 (선택 손)</h2>
+  <div class="row"><select id="sel"></select></div>
+  <table id="jt"><thead><tr><th>관절</th><th>각도°</th><th>DexPilot°</th><th>차이°</th></tr></thead><tbody></tbody></table>
+</aside>
+<script type="importmap">
+{ "imports": {
+  "three": "/static/vendor/three.module.js",
+  "three/examples/jsm/loaders/STLLoader.js": "/static/vendor/jsm/loaders/STLLoader.js",
+  "three/examples/jsm/loaders/GLTFLoader.js": "/static/vendor/jsm/loaders/GLTFLoader.js",
+  "three/examples/jsm/loaders/ColladaLoader.js": "/static/vendor/jsm/loaders/ColladaLoader.js",
+  "three/examples/jsm/controls/OrbitControls.js": "/static/vendor/jsm/controls/OrbitControls.js",
+  "three/examples/jsm/utils/BufferGeometryUtils.js": "/static/vendor/jsm/utils/BufferGeometryUtils.js",
+  "urdf-loader": "/static/vendor/urdf/URDFLoader.js"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
+import URDFLoader from 'urdf-loader';
+
+const $ = id => document.getElementById(id);
+const S = { angle: true, dex: true, skel: true, sel: null, dexOp: 0.45 };
+const SPACING = 0.42;
+const BONES = [[1,2],[2,3],[3,4],[4,5],[1,6],[6,7],[7,8],[8,9],[9,10],[1,11],[11,12],[12,13],[13,14],[14,15],[1,16],[16,17],[17,18],[18,19],[19,20],[1,21],[21,22],[22,23],[23,24],[24,25],[7,12],[12,17],[17,22]];
+
+// ------------------------------------------------------------------ scene
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x14171c);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+const controls = new OrbitControls(camera, canvas); controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x333a44, 1.1));
+const dl = new THREE.DirectionalLight(0xffffff, 1.0); dl.position.set(1, 2, 3); scene.add(dl);
+scene.add(new THREE.GridHelper(4, 16, 0x2c323c, 0x232831));
+function setCam() { camera.position.set(0, -1.6, 1.0); camera.up.set(0, 0, 1); controls.target.set(0, 0, 0.1); controls.update(); }
+camera.up.set(0, 0, 1); setCam();
+function resize() { const r = $('viewport').getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe($('viewport')); resize();
+(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+$('bCam').onclick = setCam;
+
+// ------------------------------------------------------------------ human skeleton (left of the row)
+const skelGroup = new THREE.Group(); scene.add(skelGroup);
+const skelGeom = new THREE.BufferGeometry(); skelGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(BONES.length * 6), 3));
+const skelLines = new THREE.LineSegments(skelGeom, new THREE.LineBasicMaterial({ color: 0xffae42 }));
+const skelPts = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(26 * 3), 3)), new THREE.PointsMaterial({ color: 0xffffff, size: 0.012 }));
+skelGroup.add(skelLines, skelPts);
+function drawSkel(sk) {
+  skelGroup.visible = S.skel && !!sk;
+  if (!sk) return;
+  const p = skelPts.geometry.attributes.position; for (let i = 0; i < 26; i++) p.setXYZ(i, sk[i][0], sk[i][1], sk[i][2]); p.needsUpdate = true;
+  const l = skelGeom.attributes.position; BONES.forEach(([a, b], i) => { l.setXYZ(2 * i, ...sk[a]); l.setXYZ(2 * i + 1, ...sk[b]); }); l.needsUpdate = true;
+}
+
+// ------------------------------------------------------------------ robots
+let INFO = null; const RIG = {};  // key -> {solid, ghost, pivot, info, label}
+function makeLabel(text) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = '#dfe4ea'; g.font = 'bold 36px system-ui'; g.textAlign = 'center'; g.fillText(text, 128, 44);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true })); sp.scale.set(0.24, 0.06, 1); return sp;
+}
+function loadRobot(info, idx, n) {
+  const manager = new THREE.LoadingManager();
+  const loader = new URDFLoader(manager);
+  const stl = new STLLoader(manager), gltf = new GLTFLoader(manager), dae = new ColladaLoader(manager);
+  loader.loadMeshCb = (path, mgr, done) => {
+    const ext = path.split('.').pop().toLowerCase();
+    if (ext === 'stl') stl.load(path, g => done(new THREE.Mesh(g, new THREE.MeshStandardMaterial())), undefined, e => done(null, e));
+    else if (ext === 'glb' || ext === 'gltf') gltf.load(path, r => done(r.scene), undefined, e => done(null, e));
+    else if (ext === 'dae') dae.load(path, c => done(c.scene), undefined, e => done(null, e));
+    else done(null, new Error('mesh 형식 미지원: ' + path));
+  };
+  const pivot = new THREE.Group(); pivot.position.set((idx - (n - 1) / 2) * SPACING, 0, 0); scene.add(pivot);
+  const lab = makeLabel(info.label); lab.position.set(0, 0, 0.32); pivot.add(lab);
+  const rig = RIG[info.key] = { info, pivot, solid: null, ghost: null };
+  let a = null, b = null;
+  manager.onLoad = () => { if (a && b) { setup(rig, a, b); a = b = null; } };
+  loader.load(info.urdf, r => { a = r; }, undefined, e => showErr(info.key + ' URDF 로드 실패: ' + e));
+  loader.load(info.urdf, r => { b = r; }, undefined, e => showErr(info.key + ' URDF 로드 실패: ' + e));
+}
+function setup(rig, solid, ghost) {
+  rig.solid = solid; rig.ghost = ghost; rig.pivot.add(solid); rig.pivot.add(ghost);
+  solid.traverse(o => { if (o.isMesh) o.material = new THREE.MeshStandardMaterial({ color: 0xb8bec8, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide }); });
+  ghost.traverse(o => { if (o.isMesh) o.material = new THREE.MeshStandardMaterial({ color: 0x7fb4ff, roughness: 0.6, transparent: true, opacity: S.dexOp, depthWrite: S.dexOp >= 0.99, side: THREE.DoubleSide }); });
+  // all our Bench2Dex URDFs stand with the palm normal roughly +z after this tilt; the user can orbit anyway
+  applyVis();
+}
+function setQ(robot, q) { if (!robot || !q) return; for (const [j, v] of Object.entries(q)) { const J = robot.joints[j]; if (J) { J.ignoreLimits = true; J.setJointValue(v); } } }
+function applyVis() {
+  for (const rig of Object.values(RIG)) {
+    if (!rig.solid) continue;
+    rig.solid.visible = rig.info.angle && S.angle;   // grey = angle map (only hands with an angle config)
+    rig.ghost.visible = S.dex;                       // blue = DexPilot, every hand
+    rig.ghost.traverse(o => { if (o.isMesh) { o.material.opacity = S.dexOp; o.material.depthWrite = S.dexOp >= 0.99; } });
+  }
+}
+$('dexOp').oninput = () => { S.dexOp = parseFloat($('dexOp').value); $('dexOpV').textContent = S.dexOp.toFixed(2); applyVis(); };
+for (const [id, k] of [['bAngle', 'angle'], ['bDex', 'dex'], ['bSkel', 'skel']]) $(id).onclick = () => { S[k] = !S[k]; $(id).classList.toggle('on', S[k]); applyVis(); };
+
+// ------------------------------------------------------------------ socket
+let ws = null, last = null;
+function connect() {
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+  ws.onclose = () => { $('hud').innerHTML = '<b style="color:var(--bad)">서버 연결 끊김 — 재접속 중…</b>'; setTimeout(connect, 1500); };
+  ws.onmessage = ev => onFrame(JSON.parse(ev.data));
+}
+function showErr(e) { $('err').textContent = e || ''; }
+const deg = v => (v * 180 / Math.PI).toFixed(0);
+function onFrame(f) {
+  showErr(f.err);
+  if (f.nokp) { $('hud').innerHTML = `<b>손 데이터 없음</b> · 입력 ${f.source} (${f.side})`; return; }
+  last = f; drawSkel(f.skeleton);
+  const parts = [];
+  for (const [k, h] of Object.entries(f.hands)) {
+    const rig = RIG[k]; if (!rig || !rig.solid) continue;
+    if (rig.info.angle) setQ(rig.solid, h.q_angle);
+    setQ(rig.ghost, h.q_dex);
+    parts.push(`${k}${h.err ? ' <span class="err">ERR</span>' : ''} ${h.ms} ms${h.blend > 0 ? ` pinch ${(h.blend * 100).toFixed(0)}%` : ''}`);
+  }
+  $('hud').innerHTML = `입력 <b>${f.source}</b> (${f.side}) · <span class="sw" style="background:#b8bec8"></span>각도 매핑 <span class="sw" style="background:#7fb4ff"></span>DexPilot <span class="sw" style="background:#ffae42"></span>사람 손<br>` + parts.join(' · ');
+  $('hands').innerHTML = Object.entries(f.hands).map(([k, h]) => `<div class="row"><b style="min-width:60px">${k}</b><span class="muted">${INFO.hands.find(x => x.key === k)?.angle ? '각도+DexPilot' : 'DexPilot만'} · ${h.ms} ms${h.blend > 0 ? ` · 핀치 블렌드 ${(h.blend * 100).toFixed(0)}%` : ''}</span>${h.err ? `<div class="err">${h.err}</div>` : ''}</div>`).join('');
+  renderTable(f);
+}
+function renderTable(f) {
+  const k = S.sel || $('sel').value; const h = f.hands[k]; if (!h) return;
+  const names = INFO.hands.find(x => x.key === k)?.joints || [];
+  const qa = h.q_angle || {}, qd = h.q_dex || {};
+  $('jt').querySelector('tbody').innerHTML = names.map(n => {
+    const a = qa[n], d = qd[n];
+    const diff = (a !== undefined && d !== undefined) ? deg(a - d) : '';
+    return `<tr><td>${n}</td><td>${a !== undefined ? deg(a) : '-'}</td><td>${d !== undefined ? deg(d) : '-'}</td><td class="${Math.abs(diff) > 20 ? 'lim' : ''}">${diff}</td></tr>`;
+  }).join('');
+}
+$('sel').onchange = () => { S.sel = $('sel').value; if (last) renderTable(last); };
+
+fetch('/api/info').then(r => r.json()).then(info => {
+  INFO = info;
+  info.hands.forEach((h, i) => loadRobot(h, i, info.hands.length));
+  $('sel').innerHTML = info.hands.map(h => `<option value="${h.key}">${h.key}</option>`).join('');
+  S.sel = info.hands[0]?.key || null;
+  skelGroup.position.set(-(info.hands.length + 1) / 2 * SPACING, 0, 0.1);
+  connect();
+}).catch(e => showErr('info 실패: ' + e));
+</script>
+</body>
+</html>
