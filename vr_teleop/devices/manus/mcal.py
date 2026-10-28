@@ -236,13 +236,19 @@ def _open_glove(side: str, timeout: float):
         sys.exit(f"[mcal] Manus SDK import 실패: {e} — cffi 있는 환경인가? (source /workspace/dexverse_env.sh)")
     ok = SDKReturnCode.Success
     sdk = ManusSDK()
-    live = set()                                     # 데이터를 보내고 있는 장갑 ID
-    sdk.register_ergonomics_callback(
-        lambda s: live.update(s.data[i].id for i in range(s.dataCount) if not s.data[i].isUserID))
+    live: dict[int, str | None] = {}                 # 연결된 장갑 ID → "left"/"right" (landscape) / None (아직 모름)
     r = lib.CoreSdk_InitializeIntegrated()
     if r != ok:
         sys.exit(f"[mcal] SDK 초기화 실패: {SDKReturnCode(r).name} — 다른 Manus 프로그램(브리지 등)이 켜져 있나?")
     atexit.register(lambda: lib.CoreSdk_ShutDown())
+    # 콜백은 InitializeIntegrated 뒤에 등록해야 온다(앞에 등록하면 초기화가 지워 버려 장갑이 46 Hz 로 데이터를 보내도
+    # 아무 콜백이 안 왔다 — 10/27 "데이터 오는 장갑 []"). 브리지 reader 와 같은 순서.
+    # ergonomics 스트림은 연결 직후 늦게 올 수 있어 landscape(연결된 장갑 목록) 콜백도 같이 본다.
+    sdk.register_ergonomics_callback(
+        lambda s: [live.setdefault(s.data[i].id, None) for i in range(s.dataCount) if not s.data[i].isUserID])
+    sdk.register_landscape_callback(
+        lambda l: live.update({l.gloveDevices.gloves[i].id: Side(l.gloveDevices.gloves[i].side).name.lower()
+                               for i in range(l.gloveDevices.gloveCount)}))
     cs = ffi.new("CoordinateSystemVUH*")             # 연결 전에 좌표계를 정해야 데이터가 온다
     cs.view, cs.up, cs.handedness, cs.unitScale = AxisView.XFromViewer, AxisPolarity.PositiveZ, Side.Right, 1.0
     lib.CoreSdk_InitializeCoordinateSystemWithVUH(cs[0], True)
@@ -255,13 +261,17 @@ def _open_glove(side: str, timeout: float):
                 hosts = ffi.new("ManusHost[]", cnt[0])
                 lib.CoreSdk_GetAvailableHostsFound(hosts, cnt[0])
                 connected = lib.CoreSdk_ConnectToHost(hosts[0]) == ok
-        for gid in list(live):
-            g = ffi.new("GloveLandscapeData*")
-            if lib.CoreSdk_GetDataForGlove_UsingGloveId(gid, g) == ok and Side(g.side).name.lower() == side:
+        for gid, gside in list(live.items()):
+            if gside is None:  # ergonomics 로만 본 장갑: 쪽을 따로 묻는다 (연결 직후엔 실패할 수 있음)
+                g = ffi.new("GloveLandscapeData*")
+                if lib.CoreSdk_GetDataForGlove_UsingGloveId(gid, g) == ok:
+                    gside = live[gid] = Side(g.side).name.lower()
+            if gside == side:
                 return lib, ffi, gid
         time.sleep(0.2)
+    seen = ", ".join(f"{g:#x} {s_ or '?'}" for g, s_ in live.items())
     sys.exit(f"[mcal] {side} 장갑이 {timeout:.0f}초 안에 안 보임 — 장갑 전원, 다른 Manus 프로그램(브리지 등) 종료 확인 "
-             f"(동글 연결 {'됨' if connected else '안 됨'}, 데이터 오는 장갑 {[f'{g:#x}' for g in live]})")
+             f"(동글 연결 {'됨' if connected else '안 됨'}, 연결된 장갑 [{seen}])")
 
 
 def cmd_save(args):
@@ -327,7 +337,7 @@ def main():
         p.add_argument("--side", choices=("left", "right"), required=True)
         p.add_argument("--name", help="이름 → <dir>/<name>_<side>.mcal (load 에서 생략 = 디폴트)")
         p.add_argument("--file", help="(load) 임의 경로의 .mcal / (save) 저장 경로 직접 지정")
-        p.add_argument("--timeout", type=float, default=15.0, help="장갑을 기다릴 시간(초)")
+        p.add_argument("--timeout", type=float, default=30.0, help="장갑을 기다릴 시간(초)")
         if name == "save":
             p.add_argument("--force", action="store_true", help="같은 이름 덮어쓰기")
             p.add_argument("--note", default="", help="메모(누구 손, 무슨 상황 등)")
