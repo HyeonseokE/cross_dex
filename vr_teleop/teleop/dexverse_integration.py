@@ -148,6 +148,34 @@ def add_manus_device_from_env(devices_cfg, use_xr: bool) -> None:
     )
 
 
+def _show_lift_height_marker(env_cfg) -> bool:
+    """GraspTwoItems (success = both active objects >= table + 0.20 m, no goal position): a red -> green sphere at
+    the success height above each active object. Returns True when the task is GraspTwoItems."""
+    try:
+        from dexverse.tasks.config.grasping import grasp_two_items_cfg as G
+    except ImportError:
+        return False
+    if not all(getattr(env_cfg.scene, n, None) is not None for n in G.OBJECT_NAMES):
+        return False
+    from dexverse.tasks import dexverse_base_env_cfg as base
+    from isaaclab.managers import ObservationTermCfg as ObsTerm
+
+    from .dexverse_lift_marker import lift_height_marker_vis
+
+    if env_cfg.observations.scene_vis is None:
+        env_cfg.observations.scene_vis = base.ObservationsCfg.SceneVisObsCfg()
+    if hasattr(env_cfg.observations.scene_vis, "lift_height_marker_vis"):
+        return True
+    env_cfg.observations.scene_vis.lift_height_marker_vis = ObsTerm(
+        func=lift_height_marker_vis,
+        params={"object_names": list(G.OBJECT_NAMES), "height_m": G.LIFT_SUCCESS_HEIGHT_M, "radius": 0.025,
+                "opacity": 0.6, "prim_path_prefix": "/Visuals/LiftHeightMarker"},
+    )
+    print(f"[vr_teleop] lift-height marker on (sphere {G.LIFT_SUCCESS_HEIGHT_M:.2f} m above the table over each active "
+          "object, red -> green as it is lifted)")
+    return True
+
+
 def show_goal_marker(env_cfg) -> None:
     """Show the goal sphere (red -> green as the tilt condition is met) in the DexVerse pour-style tasks.
 
@@ -155,6 +183,8 @@ def show_goal_marker(env_cfg) -> None:
     ``enable_debug_vis`` are False). This adds the same observation-term visual the config would add with both on,
     to an already built env cfg. Tasks without that marker (no ``pour_show_progress_marker``) are left as they are.
     """
+    if _show_lift_height_marker(env_cfg):
+        return
     if not hasattr(env_cfg, "pour_show_progress_marker") or getattr(env_cfg.scene, "success_marker", None) is None:
         return
     if env_cfg.observations.scene_vis is not None and hasattr(env_cfg.observations.scene_vis, "pour_progress_marker_vis"):
