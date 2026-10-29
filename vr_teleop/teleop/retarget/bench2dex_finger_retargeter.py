@@ -160,8 +160,14 @@ class Bench2DexHand:
         free = (lim[:, 1] - lim[:, 0]) > 1e-3  # ignore locked joints
         if not free.any():
             return
-        on_limit = np.mean((np.abs(q[free] - lim[free, 0]) < 0.02) | (np.abs(q[free] - lim[free, 1]) < 0.02))
-        self._pinned = self._pinned + 1 if on_limit > frac else 0
+        at_lo = np.abs(q[free] - lim[free, 0]) < 0.02
+        at_hi = np.abs(q[free] - lim[free, 1]) < 0.02
+        on_limit = np.mean(at_lo | at_hi)
+        # a closed fist legitimately puts every flexion joint on its UPPER limit (Inspire: 6/6 joints at 77 deg) - that
+        # is not a lock-in. The stuck solutions seen live mixed lower- and upper-limit joints (Shadow MCP 90 with wrist
+        # -40, LEAP MCP -18 with 9 at 128), so require both kinds.
+        mixed = at_lo.mean() >= 0.15 and at_hi.mean() >= 0.15
+        self._pinned = self._pinned + 1 if (on_limit > frac and mixed) else 0
         if self._pinned >= frames:
             seq.last_qpos = lim[:, 0].astype(np.float32)
             if getattr(seq, "filter", None) is not None:
