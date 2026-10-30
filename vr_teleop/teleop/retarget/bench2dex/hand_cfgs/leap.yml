@@ -21,6 +21,8 @@ retargeting:
   - middle_tip_head
   - ring_tip_head
   joint_limits_override:
+    # 2026-10-29: abduction 0/4/8 unlocked to +-0.3 rad (Bench2Dex had [0,0]); the human spread enters the
+    # joint-angle prior (angle_cfgs/leap.yml) so the optimiser does not splay the fingers on its own
     # 2026-10-28: MCP (1/5/9) may not hyperextend - DexPilot held them at -18 deg on the open hand
     '1':
     - 0
@@ -32,14 +34,14 @@ retargeting:
     - 0
     - 2.2
     '0':
-    - 0
-    - 0
+    - -0.3
+    - 0.3
     '4':
-    - 0
-    - 0
+    - -0.3
+    - 0.3
     '8':
-    - 0
-    - 0
+    - -0.3
+    - 0.3
     '2':
     - 0
     - 1.6
