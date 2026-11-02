@@ -21,22 +21,28 @@ retargeting:
   # chains, so the URDFs used here are local copies (hand_cfgs/ur5+RH56DFX/urdf/, thumb_4 -> thumb_2 directly).
   ignore_mimic_joint: false
 
+  # 2026-10-31: right hand on the DexVerse sim kinematics (DexVerse Inspire URDF, mimics = the sim's rigid ones). The
+  # URDF-Zoo Right_Hand.urdf has other finger links and mimic laws (finger 1.117x-0.15 vs sim 1.064x-0.045, thumb
+  # 1.14 / 0.86x+0.1 vs 1.334 / 0.667x): its exact thumb-index pinch (0.2 cm) left a 2.4 cm gap in the sim. The palm
+  # frames coincide (5 palm joints within 2 mm, 0.5 deg), so mano_to_pinocchio_rpy / offsets / scale are unchanged.
+  # Joint names = the DexVerse action joints. Was: ur5+RH56DFX/urdf/Right_Hand.urdf, r_base_link, right_*_tip,
+  # right_{thumb_1,thumb_2,index_1,middle_1,ring_1,little_1}_joint.
   right:
-    urdf_path: ur5+RH56DFX/urdf/Right_Hand.urdf
-    wrist_link_name: "r_base_link"
+    urdf_path: ../../../../../../source/dexverse/dexverse/robot_agents/inspire/retarget/inspire_hand_right/inspire_hand_right.urdf
+    wrist_link_name: "hand_base_link"
     finger_tip_link_names:
-      - right_thumb_tip
-      - right_index_tip
-      - right_middle_tip
-      - right_ring_tip
-      - right_little_tip
+      - thumb_tip
+      - index_tip
+      - middle_tip
+      - ring_tip
+      - pinky_tip
     target_joint_names:
-      - right_thumb_1_joint
-      - right_thumb_2_joint
-      - right_index_1_joint
-      - right_middle_1_joint
-      - right_ring_1_joint
-      - right_little_1_joint
+      - thumb_proximal_yaw_joint
+      - thumb_proximal_pitch_joint
+      - index_proximal_joint
+      - middle_proximal_joint
+      - ring_proximal_joint
+      - pinky_proximal_joint
     mano_to_pinocchio_rpy: [1.5708, -1.5708, 0]
     sim_wrist_to_pin_root_rpy: [0, 0, 0]
 

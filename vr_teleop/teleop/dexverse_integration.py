@@ -51,6 +51,8 @@ def bench2dex_joint_name(action_name: str, bench2dex_names: list[str], side: str
     if action_name in bench2dex_names:
         return action_name
     bare = re.sub(r"^(right|left)_", "", action_name)
+    if bare in bench2dex_names:  # DexPilot model that uses the DexVerse joint names (Inspire right hand)
+        return bare
     leap = re.fullmatch(r"(?:leap_)?(\d+)", bare)  # LEAP: DexVerse leap_<n> / <side>_<n>, URDF-Zoo "<n>"
     if leap and leap.group(1) in bench2dex_names:
         return leap.group(1)

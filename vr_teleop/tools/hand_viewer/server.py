@@ -44,8 +44,10 @@ VENDOR = pathlib.Path(os.environ.get("HAND_VIEWER_VENDOR", "/workspace/robo-viz/
 def urdf_of(hand_type: str, side: str) -> pathlib.Path:
     import yaml
 
-    cfg = yaml.safe_load(open(REPO / "vr_teleop/vr_teleop/teleop/retarget/bench2dex/hand_cfgs" / f"{hand_type}.yml"))
-    return URDF_ZOO / cfg["retargeting"][side]["urdf_path"]
+    cfg_dir = REPO / "vr_teleop/vr_teleop/teleop/retarget/bench2dex/hand_cfgs"
+    rel = yaml.safe_load(open(cfg_dir / f"{hand_type}.yml"))["retargeting"][side]["urdf_path"]
+    zoo, local = URDF_ZOO / rel, (cfg_dir / rel).resolve()
+    return local if local.is_file() and not zoo.is_file() else zoo  # e.g. the Inspire right hand from DexVerse
 
 
 class HandRig:
