@@ -140,7 +140,7 @@ vr_teleop/vr_teleop/tools/dexverse_session.sh record --task Dexverse-GraspCup-v1
 1. Quest로 Connect → **Enter VR**.
 2. 로봇은 **헤드셋 메뉴 START 전에는 움직이지 않는다**. 오른손을 책상에서 약 20 cm 띄우고 로봇 손 근처·같은 방향에
    두고 START → XR 기준점을 옮겨 내 손을 로봇 손에 겹치고(recenter), 그때부터 변화량을 따라온다.
-3. 어긋나면 패널 **Reset → 손 맞추기 → A/X 버튼(또는 Play)**. 이 클라이언트에는 STOP만 보내는 버튼이 없고 Reset이 STOP+RESET을 보낸다.
+3. 어긋나면 패널 **Reset → 손 맞추기 → A/X 버튼(또는 Play)**. 이 클라이언트에는 STOP만 보내는 버튼이 없고 Reset이 STOP+RESET을 보낸다. Reset은 물체 배치도 바꾼다(같은 에피소드의 다음 variant, 2026-11-06; 실패 후 자동 재시도는 같은 배치).
 4. `record`: 성공 조건이 유지되면 저장·리셋. 다음 데모는 **컨트롤러 A(오른손)/X(왼손) 버튼 한 번**(손 정렬 후 자동 시작) 또는 패널 Reset → Play. Reset만 누르면 환경만 리셋되고 로봇은 A/X·Play 전까지 안 움직인다. 종료는 Ctrl+C.
 
 결과: `/workspace/datasets/dexverse/teleop/trajectories/<카테고리>/<태스크>/*.pkl`, 로그: `/workspace/logs/teleop/YYYYMMDD/`.
