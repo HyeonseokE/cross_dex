@@ -48,3 +48,6 @@ left:
     "0": {features: {index_spread: +1.0}, offset: 0.0, min: -0.3, max: 0.3}   # abduction, sign by FK (left URDF)
     "4": {features: {middle_spread: +1.0}, offset: 0.0, min: -0.3, max: 0.3}   # abduction, sign by FK (left URDF)
     "8": {features: {ring_spread: +1.0}, offset: 0.0, min: -0.3, max: 0.3}   # abduction, sign by FK (left URDF)
+    # 2026-11-06: thumb 12/13 flex with negative angles on the left URDF -> the right-hand prior mirrored
+    "12": {features: {thumb_cmc: -0.1, thumb_oppose: 0.15, thumb_ip: -0.98, index_mcp: 0.08}, offset: -0.31, min: -2.0, max: 0.35}
+    "13": {features: {thumb_cmc: -1.27, thumb_oppose: -0.15, thumb_ip: -0.46, index_mcp: -1.12}, offset: 1.54, min: -2.4, max: 0.47}

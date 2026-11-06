@@ -86,6 +86,27 @@ retargeting:
   left:
     urdf_path: xarm+leap/leap_hand_left.urdf
     articulation_prefix: leap_l_
+    # 2026-11-06: the left URDF (and the DexVerse left hand) flex the thumb joints 12/13 with NEGATIVE angles
+    # (limits [-2.09, 0.35] / [-2.44, 0.47], mirrored from the right hand). A side section replaces the whole
+    # joint_limits_override, so the right-hand table is repeated here with 12/13 mirrored; with the right-hand
+    # ranges the left thumb was pinned at +0.35/+0.47 and moved away from the fingers (16.9 cm thumb-index at pinch).
+    joint_limits_override:
+      '1': [0, 2.2]
+      '5': [0, 2.2]
+      '9': [0, 2.2]
+      '0': [-0.3, 0.3]
+      '4': [-0.3, 0.3]
+      '8': [-0.3, 0.3]
+      '2': [0, 1.6]
+      '6': [0, 1.6]
+      '10': [0, 1.6]
+      '3': [0, 1.2]
+      '7': [0, 1.2]
+      '11': [0, 1.2]
+      '12': [-1.0, 0.35]
+      '13': [-1.5, 0.47]
+      '14': [0, 1.0]
+      '15': [0, 1.2]
     mano_to_pinocchio_rpy:
     - -1.5708
     - -1.5708
