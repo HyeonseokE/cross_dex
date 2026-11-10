@@ -46,6 +46,11 @@ def urdf_of(hand_type: str, side: str) -> pathlib.Path:
 
     cfg_dir = REPO / "cross_dex/teleop/retarget/bench2dex/hand_cfgs"
     rel = yaml.safe_load(open(cfg_dir / f"{hand_type}.yml"))["retargeting"][side]["urdf_path"]
+    from cross_dex.teleop.retarget.bench2dex.retarget_bridge import resolve_dexverse_urdf
+
+    rel = resolve_dexverse_urdf(rel)  # dexverse://... -> absolute path in the dexverse package
+    if pathlib.Path(rel).is_absolute():
+        return pathlib.Path(rel)
     zoo, local = URDF_ZOO / rel, (cfg_dir / rel).resolve()
     return local if local.is_file() and not zoo.is_file() else zoo  # e.g. the Inspire right hand from DexVerse
 

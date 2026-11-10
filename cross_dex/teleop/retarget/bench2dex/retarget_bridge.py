@@ -64,6 +64,19 @@ def _default_urdf_zoo_dir() -> Path:
 _URDF_ZOO_DIR = _default_urdf_zoo_dir()
 _HAND_CFGS_DIR = Path(__file__).parent / "hand_cfgs"
 
+DEXVERSE_URDF_SCHEME = "dexverse://"  # <scheme>robot_agents/...: a URDF inside the installed dexverse package (cross_dex)
+
+
+def resolve_dexverse_urdf(value) -> str:
+    """``dexverse://<path>`` -> absolute path inside the installed ``dexverse`` package; other values unchanged."""
+    value = str(value)
+    if not value.startswith(DEXVERSE_URDF_SCHEME):
+        return value
+    import importlib
+
+    pkg_dir = Path(importlib.import_module("dexverse").__file__).resolve().parent
+    return str(pkg_dir / value[len(DEXVERSE_URDF_SCHEME):])
+
 # Map dex2bench hand_type → retarget config filename (single file per hand)
 _HAND_TYPE_TO_CONFIG = {
     "rh56dfx":    "rh56dfx.yml",
@@ -208,12 +221,9 @@ class RetargetBridge:
         quat_corr_rpy = retarget_sec.pop("wrist_quat_correction_rpy", None)
 
         urdf_path_value = retarget_sec.get("urdf_path")
-        if urdf_path_value and str(urdf_path_value).startswith("dexverse://"):
+        if urdf_path_value and str(urdf_path_value).startswith(DEXVERSE_URDF_SCHEME):
             # URDF inside the installed dexverse package (cross_dex 2026-11-10; was a ../../ path into the DexVerse repo)
-            import importlib
-
-            pkg_dir = Path(importlib.import_module("dexverse").__file__).resolve().parent
-            urdf_path_value = str(pkg_dir / str(urdf_path_value)[len("dexverse://"):])
+            urdf_path_value = resolve_dexverse_urdf(urdf_path_value)
             retarget_sec["urdf_path"] = urdf_path_value
         if urdf_path_value:
             urdf_path = Path(str(urdf_path_value))
