@@ -12,7 +12,7 @@ cross_dex/                      (import root)
   dexverse/
     adapters/                   DexVerse 연결부: Isaac Lab 장치, record_demos 통합, 성공 패널, 세션 스크립트
   bench2dex/
-    adapters/                   Bench2Dex 연결부 (예정: Manus+컨트롤러 → XrHandSource 호환 입력, 세션 스크립트)
+    adapters/                   Bench2Dex 연결부: Manus+컨트롤러 → XrHandSource 호환 입력, 리타게팅 컨트롤러, 세션 스크립트
 ```
 
 예정: `retarget/`(SPIDER cross-embodiment, 현재 `bench2dex_retarget/retarget`), `pipeline/`(pkl→LeRobot·HF·노션,
@@ -31,7 +31,8 @@ dexverse 패키지(DexVerse adapters), Manus Linux SDK(`$MANUS_SDK_PY`), Bench2D
 - **DexVerse**: `cross_dex/dexverse/adapters/dexverse_session.sh record --task <Task> --robot_type <rt> --num_demos 50`
   (DexVerse 레포의 `scripts/teleop_tools/dexverse_session.sh`는 이 스크립트로 넘기는 래퍼).
   `record_demos.py --teleop_device manus`가 `cross_dex.dexverse.adapters.dexverse_integration`을 부른다.
-- **Bench2Dex**: 준비 중 (`bench2dex/adapters/`).
+- **Bench2Dex**: `cross_dex/bench2dex/adapters/b2d_session.sh record --task scenes/06_fruit_bowl_loading.yaml [--robot-key multi_ur5_shadow_hand_with_flange]`
+  → bench2dex `main.py --teleop --teleop-device manus-quest --collect` (fork 브랜치 `teleop/manus-quest`). 손목은 Bench2Dex의 anchor 상대 매핑 → 팔 IK, 손가락은 cross_dex 리타게팅.
 
 ## 규칙
 
