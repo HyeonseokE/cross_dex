@@ -3,17 +3,20 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vr_teleop"
-version = "0.1.0"
-description = "VR teleoperation with Manus gloves and a Meta Quest 3 (glove-mounted controller), portable across simulators"
+name = "cross_dex"
+version = "0.2.0"
+description = "cross-dex: VR teleoperation (Manus gloves + Meta Quest 3), cross-embodiment retargeting and the data pipeline shared by the DexVerse and Bench2Dex benchmarks"
 requires-python = ">=3.10"
-# Core needs numpy / scipy. Finger retargeting needs dex_retargeting (+ pinocchio); the Isaac Lab device,
-# the Quest OpenXR input and the calibration apps need Isaac Sim / Isaac Lab; the DexVerse integration
-# needs dexverse. They are not declared so the package installs into an existing simulator environment.
+# Core (teleop/common, devices/manus, retarget) needs numpy / scipy; finger retargeting needs dex_retargeting
+# (+ pinocchio); the Isaac Lab device, the Quest OpenXR input and the calibration apps need Isaac Sim / Isaac Lab;
+# the DexVerse adapters need the dexverse package. They are not declared so the package installs into an
+# existing simulator environment:  pip install --no-deps -e /workspace/cross_dex
 dependencies = ["numpy", "scipy"]
 
 [tool.setuptools.packages.find]
-include = ["vr_teleop*"]
+include = ["cross_dex*"]
 
 [tool.setuptools.package-data]
-"vr_teleop.teleop.retarget.bench2dex" = ["hand_cfgs/*.yml"]
+"cross_dex.teleop.retarget" = ["angle_cfgs/*.yml"]
+"cross_dex.teleop.retarget.bench2dex" = ["hand_cfgs/*.yml", "hand_cfgs/*/urdf/*.urdf"]
+"cross_dex.teleop.tools.hand_viewer" = ["*.html"]
