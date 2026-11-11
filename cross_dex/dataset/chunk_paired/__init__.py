@@ -26,8 +26,8 @@ def save_manifest(out: str, args, **extra) -> str:
 
     def _git(d):
         try:
-            c = _sp.run(["git", "-C", d, "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10).stdout.strip()
-            dirty = bool(_sp.run(["git", "-C", d, "status", "--porcelain", "-uno"], capture_output=True, text=True,
+            c = _sp.run(["git", "-c", "safe.directory=*", "-C", d, "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10).stdout.strip()
+            dirty = bool(_sp.run(["git", "-c", "safe.directory=*", "-C", d, "status", "--porcelain", "-uno"], capture_output=True, text=True,
                                  timeout=30).stdout.strip())
             return {"commit": c or None, "dirty": dirty}
         except Exception:  # noqa: BLE001
