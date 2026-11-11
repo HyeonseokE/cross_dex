@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dexonomy Viewer</title>
+<style>
+  :root { --bg:#f4f4f2; --panel:#ffffff; --fg:#1d1d1b; --muted:#6b6b66; --line:#d9d9d4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#151515; --panel:#1f1f1f; --fg:#ececea; --muted:#9a9a95; --line:#333; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:13px/1.4 system-ui, sans-serif; }
+  header { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--line); }
+  select, button, input { font:inherit; color:inherit; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:4px 8px; }
+  #slider { flex:1; min-width:200px; }
+  #view { position:relative; height:calc(100vh - 84px); margin:6px; background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  #view canvas { display:block; width:100%; height:100%; }
+  #info { position:absolute; left:10px; top:8px; pointer-events:none; }
+  #info b { font-size:15px; }
+  #info span { color:var(--muted); }
+  #legend { padding:0 12px; color:var(--muted); }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <b>Dexonomy (Shadow)</b>
+  <select id="type"></select>
+  <select id="sample"></select>
+  <select id="k"></select>
+  <button id="play">▶ 재생</button>
+  <select id="speed"><option value="0.25">0.25×</option><option value="0.5" selected>0.5×</option><option value="1">1×</option></select>
+  <input id="slider" type="range" min="0" max="0" value="0">
+  <span id="fr"></span>
+</header>
+<div id="legend">정지 자세 3개(pre-grasp → grasp → squeeze)를 min-jerk로 보간한 궤적 · 주황 = 물체 · 마우스 회전/확대</div>
+<div id="view"><div id="info"></div></div>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+
+const view = document.getElementById("view"), info = document.getElementById("info");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(devicePixelRatio); view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x666666, 2.2));
+const dl = new THREE.DirectionalLight(0xffffff, 1.4); dl.position.set(0.5, -0.4, 0.8); scene.add(dl);
+scene.add(new THREE.AxesHelper(0.05));
+const cam = new THREE.PerspectiveCamera(35, 1, 0.005, 20); cam.up.set(0, 0, 1); cam.position.set(0.35, -0.45, 0.3);
+const controls = new OrbitControls(cam, renderer.domElement);
+const handMat = new THREE.MeshStandardMaterial({ color: 0x9aa5b1, roughness: 0.55, metalness: 0.1 });
+const objMat = new THREE.MeshStandardMaterial({ color: 0xe8590c, roughness: 0.7, transparent: true, opacity: 0.85 });
+const meshCache = {};
+async function meshGeom(i) {
+  if (!meshCache[i]) meshCache[i] = fetch(`/api/mesh/${i}`).then(r => r.json()).then(m => {
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(m.v, 3));
+    g.setIndex(m.f); g.computeVertexNormals(); return g; });
+  return meshCache[i];
+}
+let hand = [], obj = null, S = null, k = 0, playing = false, last = 0;
+const types = await (await fetch("/api/types")).json();
+const tSel = document.getElementById("type"), sSel = document.getElementById("sample"), kSel = document.getElementById("k");
+for (const t of types) { const o = document.createElement("option"); o.value = t.dir; o.textContent = `#${t.feix} ${t.name}`; tSel.appendChild(o); }
+async function loadType() {
+  const list = await (await fetch(`/api/samples?type=${encodeURIComponent(tSel.value)}`)).json();
+  sSel.innerHTML = ""; for (const r of list) { const o = document.createElement("option"); o.value = r; o.textContent = r.split("/").slice(1).join("/"); sSel.appendChild(o); }
+  kSel.innerHTML = ""; if (list.length) await loadSample(0);
+}
+async function loadSample(kk) {
+  S = await (await fetch(`/api/sample?rel=${encodeURIComponent(sSel.value)}&k=${kk}`)).json();
+  if (kSel.options.length !== S.n_grasps) { kSel.innerHTML = ""; for (let i = 0; i < S.n_grasps; i++) { const o = document.createElement("option"); o.value = i; o.textContent = `grasp ${i}`; kSel.appendChild(o); } }
+  kSel.value = S.k;
+  for (const m of hand) scene.remove(m);
+  hand = await Promise.all(S.geoms.map(async gi => { const m = new THREE.Mesh(await meshGeom(gi), handMat); scene.add(m); return m; }));
+  if (obj) scene.remove(obj);
+  const txt = await (await fetch(`/obj/${S.object.mesh}`)).text();
+  obj = new OBJLoader().parse(txt); obj.traverse(c => { if (c.isMesh) c.material = objMat; });
+  const [px, py, pz, qw, qx, qy, qz] = S.object.pose; obj.position.set(px, py, pz); obj.quaternion.set(qx, qy, qz, qw);
+  obj.scale.set(...S.object.scale); scene.add(obj);
+  const sl = document.getElementById("slider"); sl.max = S.frames.length - 1; k = location.hash === "#grasp" ? S.key_frames[1] : 0; sl.value = k;
+  const kf = S.frames[S.key_frames[1]]; const c = new THREE.Vector3(); kf.forEach(p => c.add(new THREE.Vector3(p[0], p[1], p[2]))); c.multiplyScalar(1 / kf.length);
+  controls.target.copy(c); draw();
+}
+function phase(f) { const [a, b, c] = S.key_frames; return f <= a ? "pre-grasp" : f < b ? "pre-grasp → grasp" : f === b ? "grasp" : f < c ? "grasp → squeeze" : "squeeze"; }
+function draw() {
+  if (!S) return;
+  S.frames[k].forEach((p, i) => { hand[i].position.set(p[0], p[1], p[2]); hand[i].quaternion.set(p[4], p[5], p[6], p[3]); });
+  const t = types.find(t => t.dir === tSel.value);
+  info.innerHTML = `<b>Feix #${t.feix} ${t.name}</b><br><span>${phase(k)} · 물체 ${S.object.mesh.split("/")[1]} · scale ${S.object.scale[0].toFixed(3)}</span>`;
+  document.getElementById("fr").textContent = `${k}/${S.frames.length - 1} (${(k / S.fps).toFixed(2)}s)`;
+}
+function resize() { const r = view.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); cam.aspect = r.width / r.height; cam.updateProjectionMatrix(); }
+addEventListener("resize", resize); resize();
+function loop(t) {
+  if (playing && S) { const dt = (t - last) / 1000 * +document.getElementById("speed").value;
+    if (dt >= 1 / S.fps) { k = (k + Math.max(1, Math.floor(dt * S.fps))) % S.frames.length; document.getElementById("slider").value = k; last = t; draw(); } }
+  else last = t;
+  controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop);
+}
+document.getElementById("slider").oninput = e => { k = +e.target.value; draw(); };
+document.getElementById("play").onclick = e => { playing = !playing; e.target.textContent = playing ? "⏸ 정지" : "▶ 재생"; };
+tSel.onchange = loadType; sSel.onchange = () => loadSample(0); kSel.onchange = () => loadSample(+kSel.value);
+requestAnimationFrame(loop); await loadType();
+</script>
+</body>
+</html>

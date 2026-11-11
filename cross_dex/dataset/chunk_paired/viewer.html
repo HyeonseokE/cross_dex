@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retarget Viewer</title>
+<style>
+  :root { --bg:#f4f4f2; --panel:#ffffff; --fg:#1d1d1b; --muted:#6b6b66; --line:#d9d9d4; --accent:#d9480f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#151515; --panel:#1f1f1f; --fg:#ececea; --muted:#9a9a95; --line:#333; --accent:#ff8a4c; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:13px/1.4 system-ui, sans-serif; }
+  header { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--line); }
+  header b { font-size:14px; }
+  select, button, input { font:inherit; color:inherit; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:4px 8px; }
+  #slider { flex:1; min-width:200px; }
+  #grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:6px; height:calc(100vh - 92px); }
+  @media (max-width:800px) { #grid { grid-template-columns:1fr; height:auto; } .cell { height:60vh; } }
+  .cell { position:relative; background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .cell canvas { display:block; width:100%; height:100%; }
+  .tag { position:absolute; left:8px; top:6px; font-weight:600; pointer-events:none; }
+  .tag span { font-weight:400; color:var(--muted); margin-left:6px; }
+  #legend { padding:0 12px 6px; color:var(--muted); }
+  #legend i { display:inline-block; width:18px; height:3px; vertical-align:middle; margin:0 4px 0 10px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "urdf-loader": "https://cdn.jsdelivr.net/npm/urdf-loader@0.12.3/src/URDFLoader.js"
+} }
+</script>
+</head>
+<body>
+<header>
+  <b>Retarget Viewer</b>
+  <select id="ep"></select>
+  <button id="play">▶ 재생</button>
+  <select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option></select>
+  <input id="slider" type="range" min="0" max="0" value="0">
+  <span id="fr"></span>
+  <label><input id="showHuman" type="checkbox" checked> 사람 손</label>
+  <label><input id="showRobot" type="checkbox" checked> 로봇 메시</label>
+</header>
+<div id="legend"><i style="background:#e8590c"></i>사람 관절점 (×scaling, 손목=로봇 palm) <i style="background:#c92a2a"></i>손끝 차이 · 마우스: 회전/확대 (4칸 동기) · 축: x 손가락, y 엄지쪽, z 손등</div>
+<div id="grid"></div>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader.js";
+import URDFLoader from "urdf-loader";
+
+const FINGERS = [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
+const HUMAN_TIPS = [4,8,12,16,20];
+const meta = await (await fetch("/api/meta")).json();
+const epSel = document.getElementById("ep");
+for (const e of meta.episodes) {
+  const o = document.createElement("option"); o.value = e.id;
+  o.textContent = `${e.id.slice(0, 8)} · ${e.label || "-"} · T=${e.T} · ` + meta.hands.map(h => `${h} ${e.err_cm[h]}cm`).join(" / ");
+  epSel.appendChild(o);
+}
+const meshMat = new THREE.MeshStandardMaterial({ color: 0x9aa5b1, metalness: 0.1, roughness: 0.6 });
+function loadMesh(path, manager, done) {
+  const ext = path.split(".").pop().toLowerCase();
+  const fail = err => { console.warn("mesh", path, err); done(null, err); };
+  if (ext === "stl") new STLLoader(manager).load(path, g => done(new THREE.Mesh(g, meshMat)), null, fail);
+  else if (ext === "obj") new OBJLoader(manager).load(path, o => { o.traverse(c => { if (c.isMesh) c.material = meshMat; }); done(o); }, null, fail);
+  else if (ext === "glb" || ext === "gltf") new GLTFLoader(manager).load(path, g => done(g.scene), null, fail);
+  else if (ext === "dae") new ColladaLoader(manager).load(path, d => done(d.scene), null, fail);
+  else fail("ext");
+}
+
+const grid = document.getElementById("grid");
+const panels = [];
+let master = null;
+for (const h of meta.hands) {
+  const cell = document.createElement("div"); cell.className = "cell";
+  const tag = document.createElement("div"); tag.className = "tag"; tag.innerHTML = `${h}<span></span>`;
+  cell.appendChild(tag); grid.appendChild(cell);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(devicePixelRatio); cell.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x666666, 2.2));
+  const dl = new THREE.DirectionalLight(0xffffff, 1.5); dl.position.set(0.3, -0.2, 0.6); scene.add(dl);
+  scene.add(new THREE.AxesHelper(0.05));
+  const cam = new THREE.PerspectiveCamera(35, 1, 0.005, 10);
+  cam.up.set(0, 0, 1); cam.position.set(0.05, -0.38, 0.30);
+  const controls = new OrbitControls(cam, renderer.domElement); controls.target.set(0.08, 0, 0);
+  const human = new THREE.Group(); scene.add(human);
+  const hLines = FINGERS.map(() => { const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(15), 3));
+    const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xe8590c })); human.add(l); return l; });
+  const hDots = new THREE.Points(new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(new Float32Array(63), 3)),
+    new THREE.PointsMaterial({ color: 0xe8590c, size: 0.006 })); human.add(hDots);
+  const errG = new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(new Float32Array(30), 3));
+  const errL = new THREE.LineSegments(errG, new THREE.LineBasicMaterial({ color: 0xc92a2a })); human.add(errL);
+  const p = { h, cell, tag, renderer, scene, cam, controls, human, hLines, hDots, errG, robot: null, data: null };
+  controls.addEventListener("change", () => { if (master !== p) return; for (const q of panels) if (q !== p) {
+    q.cam.position.copy(p.cam.position); q.controls.target.copy(p.controls.target); q.cam.updateProjectionMatrix(); } });
+  renderer.domElement.addEventListener("pointerdown", () => master = p);
+  renderer.domElement.addEventListener("wheel", () => master = p);
+  panels.push(p);
+  const loader = new URDFLoader(); loader.loadMeshCb = loadMesh; loader.parseVisual = true; loader.parseCollision = false;
+  loader.load(`/urdf/${h}/robot.urdf`, robot => { p.robot = robot; scene.add(robot); draw(); });
+}
+
+let ep = null, k = 0, playing = false, last = 0;
+const slider = document.getElementById("slider"), fr = document.getElementById("fr");
+async function loadEp(id) {
+  ep = await (await fetch(`/api/ep/${id}`)).json();
+  slider.max = ep.human.length - 1; k = 0; slider.value = 0;
+  for (const p of panels) p.data = ep.hands[p.h];
+  draw();
+}
+const v3 = new THREE.Vector3();
+function draw() {
+  if (!ep) return;
+  fr.textContent = `${k}/${ep.human.length - 1} (${(k / ep.fps).toFixed(2)}s)`;
+  for (const p of panels) {
+    const d = p.data; if (!d) continue;
+    p.tag.querySelector("span").textContent = `프레임 오차 ${d.err[k].toFixed(2)} cm · scaling ${d.scaling}`;
+    let palm = new THREE.Vector3();
+    if (p.robot) {
+      p.robot.visible = document.getElementById("showRobot").checked;
+      d.dex_joint_names.forEach((n, i) => { if (p.robot.joints[n]) p.robot.setJointValue(n, d.dexq[k][i]); });
+      p.robot.updateMatrixWorld(true);
+      if (p.robot.links[d.palm_link]) p.robot.links[d.palm_link].getWorldPosition(palm);
+    }
+    p.human.visible = document.getElementById("showHuman").checked;
+    const H = ep.human[k].map(q => [q[0] * d.scaling + palm.x, q[1] * d.scaling + palm.y, q[2] * d.scaling + palm.z]);
+    FINGERS.forEach((f, fi) => { const a = p.hLines[fi].geometry.attributes.position; f.forEach((j, i) => a.setXYZ(i, ...H[j])); a.needsUpdate = true; });
+    const dp = p.hDots.geometry.attributes.position; H.forEach((q, i) => dp.setXYZ(i, ...q)); dp.needsUpdate = true;
+    const ea = p.errG.attributes.position;
+    d.tip_links.forEach((t, i) => { if (p.robot && p.robot.links[t]) { p.robot.links[t].getWorldPosition(v3);
+      ea.setXYZ(2 * i, v3.x, v3.y, v3.z); ea.setXYZ(2 * i + 1, ...H[HUMAN_TIPS[i]]); } });
+    ea.needsUpdate = true;
+  }
+}
+function resize() { for (const p of panels) { const r = p.cell.getBoundingClientRect();
+  p.renderer.setSize(r.width, r.height, false); p.cam.aspect = r.width / Math.max(r.height, 1); p.cam.updateProjectionMatrix(); } }
+addEventListener("resize", resize);
+function loop(t) {
+  if (playing && ep) { const dt = (t - last) / 1000 * +document.getElementById("speed").value;
+    if (dt >= 1 / ep.fps) { k = (k + Math.max(1, Math.floor(dt * ep.fps))) % ep.human.length; slider.value = k; last = t; draw(); } }
+  else last = t;
+  for (const p of panels) { p.controls.update(); p.renderer.render(p.scene, p.cam); }
+  requestAnimationFrame(loop);
+}
+slider.oninput = () => { k = +slider.value; draw(); };
+document.getElementById("play").onclick = e => { playing = !playing; e.target.textContent = playing ? "⏸ 정지" : "▶ 재생"; };
+document.getElementById("showHuman").onchange = draw; document.getElementById("showRobot").onchange = draw;
+epSel.onchange = () => loadEp(epSel.value);
+resize(); requestAnimationFrame(loop);
+if (meta.episodes.length) loadEp(meta.episodes[0].id);
+</script>
+</body>
+</html>

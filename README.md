@@ -11,6 +11,8 @@ cross_dex/                      (import root)
     common/  devices/{manus,metaquest}/  retarget/  hand_mounted_controller.py  tools/{calibration,hand_viewer}
   dexverse/
     adapters/                   DexVerse 연결부: Isaac Lab 장치, record_demos 통합, 성공 패널, 세션 스크립트
+  dataset/
+    chunk_paired/               손 간 짝 청크 데이터셋 (Feix 파지 분류 전체, 사람·로봇 → 5지손 리타게팅, 60 Hz·H=16)
   bench2dex/
     adapters/                   Bench2Dex 연결부: Manus+컨트롤러 → XrHandSource 호환 입력, 리타게팅 컨트롤러, 세션 스크립트
 ```
