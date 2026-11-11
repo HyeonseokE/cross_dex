@@ -14,13 +14,14 @@ import glob
 import os
 
 import numpy as np
+from cross_dex.dataset.chunk_paired import DATA_ROOT  # noqa: E402
 import pyarrow.parquet as pq
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="/workspace/datasets/dexverse/human_motion/dexcanvas/data")
-    ap.add_argument("--out", default="/workspace/datasets/dexverse/human_motion/dexcanvas_keypoints")
+    ap.add_argument("--out", default=os.path.join(DATA_ROOT, "dexcanvas", "keypoints"))
     ap.add_argument("--shards", default="0:")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)

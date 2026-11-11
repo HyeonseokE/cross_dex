@@ -35,10 +35,12 @@ import os
 import shutil
 import time
 
+from cross_dex.dataset.chunk_paired import DATA_ROOT
+
 from isaaclab.app import AppLauncher
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--data", default="/workspace/datasets/dexverse/human_motion/dexcanvas_keypoints",
+ap.add_argument("--data", default=os.path.join(DATA_ROOT, "dexcanvas", "keypoints"),
                 help="npz shards from cross_dex.dataset.chunk_paired.extract_dexcanvas")
 ap.add_argument("--out", required=True)
 ap.add_argument("--hands", default="shadow,inspire,sharpa,wuji")

@@ -16,6 +16,7 @@ import json
 import os
 
 import numpy as np
+from cross_dex.dataset.chunk_paired import DATA_ROOT  # noqa: E402
 
 PALM = [0, 1, 4, 7, 10]          # DexCanvas order: palm(wrist), index/middle/ring/pinky MCP
 TIPS = [16, 17, 18, 19, 20]
@@ -46,7 +47,7 @@ def feix_of(label: str, table: dict[int, int]) -> int:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="/workspace/datasets/dexverse/human_motion/dexcanvas_keypoints")
+    ap.add_argument("--data", default=os.path.join(DATA_ROOT, "dexcanvas", "keypoints"))
     ap.add_argument("--shards", default="0:894:9", help="start:stop:step")
     ap.add_argument("--min_drop", type=float, default=0.01, help="m, smaller aperture changes are no closing/opening")
     ap.add_argument("--out", required=True)
