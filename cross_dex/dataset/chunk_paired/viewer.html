@@ -119,7 +119,7 @@ function draw() {
   fr.textContent = `${k}/${ep.human.length - 1} (${(k / ep.fps).toFixed(2)}s)`;
   for (const p of panels) {
     const d = p.data; if (!d) continue;
-    p.tag.querySelector("span").textContent = `프레임 오차 ${d.err[k].toFixed(2)} cm · scaling ${d.scaling}`;
+    p.tag.querySelector("span").textContent = `프레임 오차 ${d.err[k].toFixed(2)} cm · scaling ${d.scaling}` + (d.finger_k ? ` · 손가락 길이 보정 엄지 ${d.finger_k.thumb.toFixed(2)} 새끼 ${d.finger_k.pinky.toFixed(2)}` : " · 길이 보정 없음");
     let palm = new THREE.Vector3();
     if (p.robot) {
       p.robot.visible = document.getElementById("showRobot").checked;
@@ -128,7 +128,7 @@ function draw() {
       if (p.robot.links[d.palm_link]) p.robot.links[d.palm_link].getWorldPosition(palm);
     }
     p.human.visible = document.getElementById("showHuman").checked;
-    const H = ep.human[k].map(q => [q[0] * d.scaling + palm.x, q[1] * d.scaling + palm.y, q[2] * d.scaling + palm.z]);
+    const H = (d.human || ep.human)[k].map(q => [q[0] * d.scaling + palm.x, q[1] * d.scaling + palm.y, q[2] * d.scaling + palm.z]);
     FINGERS.forEach((f, fi) => { const a = p.hLines[fi].geometry.attributes.position; f.forEach((j, i) => a.setXYZ(i, ...H[j])); a.needsUpdate = true; });
     const dp = p.hDots.geometry.attributes.position; H.forEach((q, i) => dp.setXYZ(i, ...q)); dp.needsUpdate = true;
     const ea = p.errG.attributes.position;

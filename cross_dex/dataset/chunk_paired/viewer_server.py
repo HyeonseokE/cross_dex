@@ -14,6 +14,7 @@ import argparse
 import glob
 import json
 import os
+import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
 
@@ -29,15 +30,21 @@ args = ap.parse_args()
 META = json.load(open(os.path.join(args.rt, "meta.json")))
 HTML = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "viewer.html"), "rb").read()
 _MESH_INDEX: dict[str, list[str]] = {}
+_INDEX_LOCK = threading.Lock()
 
 
 def mesh_index() -> dict[str, list[str]]:
-    if not _MESH_INDEX:
-        for root in args.mesh_roots.split(","):
-            for dp, _, fs in os.walk(root):
-                for f in fs:
-                    if f.lower().endswith((".stl", ".obj", ".dae", ".glb", ".gltf", ".mtl")):
-                        _MESH_INDEX.setdefault(f, []).append(os.path.join(dp, f))
+    # built once, under a lock: the browser requests many meshes in parallel, and a thread that saw a half-built index
+    # answered 404 (shadow meshes vanished on a fresh server)
+    with _INDEX_LOCK:
+        if not _MESH_INDEX:
+            idx: dict[str, list[str]] = {}
+            for root in args.mesh_roots.split(","):
+                for dp, _, fs in os.walk(root):
+                    for f in fs:
+                        if f.lower().endswith((".stl", ".obj", ".dae", ".glb", ".gltf", ".mtl")):
+                            idx.setdefault(f, []).append(os.path.join(dp, f))
+            _MESH_INDEX.update(idx)
     return _MESH_INDEX
 
 
@@ -69,7 +76,9 @@ def episode(eid: str) -> dict:
     for h, m in META["hands"].items():
         hands[h] = {"dex_joint_names": m["dex_joint_names"], "dexq": np.round(z[f"{h}_dexq"], 4).tolist(),
                     "err": np.round(z[f"{h}_err"].mean(1) * 100, 2).tolist(), "scaling": m["scaling"],
-                    "palm_link": m["origin_links"][-1], "tip_links": m["task_links"][-5:]}
+                    "palm_link": m["origin_links"][-1], "tip_links": m["task_links"][-5:],
+                    "human": np.round(z[f"{h}_human_canonical"], 5).tolist() if f"{h}_human_canonical" in z.files else None,
+                    "finger_k": m.get("finger_k")}
     return {"fps": META["fps"], "label": str(z["action_label"]), "human": np.round(z["human_canonical"], 5).tolist(),
             "hands": hands}
 
@@ -110,5 +119,6 @@ class H(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    mesh_index()   # build before serving
     print(f"serving {args.rt} on :{args.port}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", args.port), H).serve_forever()

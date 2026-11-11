@@ -16,7 +16,7 @@ import json
 import os
 
 import numpy as np
-from cross_dex.dataset.chunk_paired import DATA_ROOT  # noqa: E402
+from cross_dex.dataset.chunk_paired import DATA_ROOT, save_manifest  # noqa: E402
 
 PALM = [0, 1, 4, 7, 10]          # DexCanvas order: palm(wrist), index/middle/ring/pinky MCP
 TIPS = [16, 17, 18, 19, 20]
@@ -97,6 +97,7 @@ def main():
     summ["bad_files"] = bad
     with open(a.out, "w") as f:
         json.dump(summ, f, indent=1)
+    save_manifest(a.out, a)
     print("bad files:", bad)
     for kind in ("close", "open", "drop_m"):
         print(kind, "all", summ[kind]["all"])

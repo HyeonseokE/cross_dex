@@ -14,7 +14,7 @@ import glob
 import os
 
 import numpy as np
-from cross_dex.dataset.chunk_paired import DATA_ROOT  # noqa: E402
+from cross_dex.dataset.chunk_paired import DATA_ROOT, save_manifest  # noqa: E402
 import pyarrow.parquet as pq
 
 
@@ -52,6 +52,7 @@ def main():
                  t=np.concatenate(ts), joints=np.concatenate(js), wrist_rotvec=np.concatenate(rv), mano_shape=np.stack(shp))
         os.replace(dst + ".tmp.npz", dst)
         print(os.path.basename(dst), len(tid), flush=True)
+    save_manifest(a.out, a, n_npz=len(glob.glob(os.path.join(a.out, "train-*.npz"))))
 
 
 if __name__ == "__main__":

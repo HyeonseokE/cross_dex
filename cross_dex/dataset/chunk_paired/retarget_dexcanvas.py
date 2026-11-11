@@ -35,7 +35,7 @@ import os
 import shutil
 import time
 
-from cross_dex.dataset.chunk_paired import DATA_ROOT
+from cross_dex.dataset.chunk_paired import DATA_ROOT, save_manifest
 
 from isaaclab.app import AppLauncher
 
@@ -49,6 +49,9 @@ ap.add_argument("--shards", default="0", help="comma list of shard indices or a:
 ap.add_argument("--max_traj", type=int, default=0, help="per shard, 0 = all")
 ap.add_argument("--per_label", type=int, default=0,
                 help="keep at most N trajectories per grasp type over all shards (0 = all); labels '01' and '001-Palmar-Pinch' are one type")
+ap.add_argument("--finger_lengths", default=os.path.join(DATA_ROOT, "dexcanvas", "finger_lengths.json"),
+                help="finger_lengths.py json of the source: per hand, lengthen each human finger (bones after its root) so its "
+                     "wrist->tip length matches the robot finger proportions ('' = off)")
 ap.add_argument("--wrist_frame", choices=["mano", "keypoints"], default="mano",
                 help="mano: DexCanvas MANO root rotation (wrist_rotvec) x fixed MANO->OpenXR axes; keypoints: built from MCPs")
 AppLauncher.add_app_launcher_args(ap)
@@ -158,6 +161,37 @@ class TeleopFingerRetargeter:
         patched = [p for p in getattr(self.rt, "_dex_config_temp_paths", []) if p.endswith(".urdf")]
         self.urdf_used = patched[-1] if patched else self.urdf_orig                  # limit/origin overrides applied
 
+    def set_finger_lengths(self, human: dict[str, dict[str, float]]):
+        """Per-finger length factors k_f for the human input of this hand (the retargeter itself is unchanged).
+
+        DexPilot matches human wrist->tip vectors x scaling to robot palm->tip vectors, so a robot finger that is longer
+        relative to the hand than the human one (robot little fingers ~0.95 of the middle finger, human ~0.81) curls to
+        reach a too-close target. Target human length per finger: L_f = robot_f / (scaling * c), c = mean robot/human
+        ratio of index, middle, ring (overall size stays with the hand's own scaling); the bones after the finger root
+        are scaled by k_f = (L_f - meta_f) / phal_f, the palm (wrist -> roots) is kept.
+        """
+        lo, hi = self.robot.joint_limits[:, 0], self.robot.joint_limits[:, 1]
+        self.robot.compute_forward_kinematics(np.clip(np.zeros(self.robot.dof), lo, hi))
+        pos = lambda n: self.robot.get_link_pose(self.robot.get_link_index(n))[:3, 3]   # noqa: E731
+        robot = np.array([np.linalg.norm(pos(t) - pos(o)) for o, t in zip(self.origin_links[-5:], self.task_links[-5:])])
+        tot = np.array([human[f]["total"] for f in FINGERS])
+        ratio = robot / (tot * self.scaling)
+        c = ratio[1:4].mean()
+        target = robot / (self.scaling * c)
+        self.finger_k = {f: float(np.clip((target[i] - human[f]["meta"]) / human[f]["phal"], 0.7, 1.6))
+                         for i, f in enumerate(FINGERS)}
+        self.finger_ratio = {f: round(float(ratio[i] / c), 3) for i, f in enumerate(FINGERS)}
+
+    def adjust(self, joints: np.ndarray) -> np.ndarray:
+        """[21,3] DexCanvas joints -> same with each finger's bones after its root scaled by k_f."""
+        if not getattr(self, "finger_k", None):
+            return joints
+        j = joints.copy()
+        for f, chain in CHAINS.items():
+            root = j[chain[0]]
+            j[chain[1:]] = root + self.finger_k[f] * (joints[chain[1:]] - root)
+        return j
+
     def reset(self):
         self.dex.reset()
 
@@ -176,6 +210,11 @@ class TeleopFingerRetargeter:
         rv = np.stack([pos[t] - pos[o] for t, o in zip(self.task_links, self.origin_links)])
         self.last_links = np.stack([self.robot.get_link_pose(i)[:3, 3] for i in range(len(self.robot.link_names))])
         return np.linalg.norm(rv - ref, axis=-1)
+
+
+FINGERS = ["thumb", "index", "middle", "ring", "pinky"]   # order of the last 5 DexPilot palm->tip vectors
+CHAINS = {"thumb": [DCI[n] for n in ("thumb_cmc", "thumb_mcp", "thumb_ip", "thumb_tip")],
+          **{f: [DCI[f"{f}_{n}"] for n in ("mcp", "pip", "dip", "tip")] for f in ("index", "middle", "ring", "pinky")}}
 
 
 def frame_hand_data(joints: np.ndarray, rot: np.ndarray, xr_map: dict[str, str]) -> dict:
@@ -204,14 +243,21 @@ def main():
     missing = [n for n in ("thumb", "index", "middle", "ring", "pinky") if not any(v.startswith(n) for v in xr_map.values())]
     assert not missing, f"OpenXR mapping misses fingers {missing}: {xr_map}"
     hands = {h: TeleopFingerRetargeter(h) for h in args.hands.split(",")}
+    if args.finger_lengths:
+        human = json.load(open(args.finger_lengths))["fingers"]
+        for r in hands.values():
+            r.set_finger_lengths(human)
+            print(r.hand, "finger length factors", {f: round(v, 3) for f, v in r.finger_k.items()},
+                  "robot/human ratio (index-ring = 1)", r.finger_ratio, flush=True)
     os.makedirs(os.path.join(args.out, "urdf"), exist_ok=True)
     for h, r in hands.items():      # the URDF the optimizer used (meshes stay next to the original URDF)
         shutil.copy(r.urdf_used, os.path.join(args.out, "urdf", f"{h}.urdf"))
-    meta = {"fps": args.fps, "xr_map": xr_map, "wrist_frame": args.wrist_frame,
+    meta = {"fps": args.fps, "xr_map": xr_map, "wrist_frame": args.wrist_frame, "finger_lengths": args.finger_lengths,
             "hands": {h: {"finger_joint_names": r.finger_joint_names, "dex_joint_names": r.dex_joint_names,
                           "urdf_orig": r.urdf_orig, "task_links": r.task_links,
                           "origin_links": r.origin_links, "scaling": r.scaling,
-                          "link_names": list(r.robot.link_names)} for h, r in hands.items()}}
+                          "link_names": list(r.robot.link_names), "finger_k": getattr(r, "finger_k", None),
+                          "finger_ratio": getattr(r, "finger_ratio", None)} for h, r in hands.items()}}
     with open(os.path.join(args.out, "meta.json"), "w") as f:
         json.dump(meta, f, indent=1)
     files = sorted(glob.glob(os.path.join(args.data, "train-*.npz")))
@@ -245,24 +291,27 @@ def main():
             canon = []
             for h, r in hands.items():
                 r.reset()
-                qs, errs, links, dqs = [], [], [], []
+                qs, errs, links, dqs, hcan = [], [], [], [], []
                 for k in range(len(tn)):
-                    hd = frame_hand_data(jn[k], rot[k], xr_map)
+                    hd = frame_hand_data(r.adjust(jn[k]), rot[k], xr_map)
                     q, dq = r(hd)
                     qs.append(q)
                     dqs.append(dq)
                     errs.append(r.vector_residual(dq, hd))
                     links.append(r.last_links)
-                    if h == next(iter(hands)):
-                        canon.append(r.rt._convert_hand_to_canonical_joint_positions(hd, RIGHT))
+                    hcan.append(r.rt._convert_hand_to_canonical_joint_positions(hd, RIGHT))
+                    if h == next(iter(hands)):   # unadjusted human, for reference
+                        canon.append(r.rt._convert_hand_to_canonical_joint_positions(frame_hand_data(jn[k], rot[k], xr_map), RIGHT))
                 out[f"{h}_q"] = np.asarray(qs, np.float32)
                 out[f"{h}_dexq"] = np.asarray(dqs, np.float32)   # [T, n_dex] retarget URDF DoF order
                 out[f"{h}_err"] = np.asarray(errs, np.float32)
                 out[f"{h}_links"] = np.asarray(links, np.float32)   # [T, L, 3] all URDF links, retarget robot root frame
+                out[f"{h}_human_canonical"] = np.asarray(hcan, np.float32)   # length-adjusted human input of this hand
             out["human_canonical"] = np.asarray(canon, np.float32)
             np.savez_compressed(dst, **out)
             print(f"[{tid}] T={len(tn)} {time.time() - t0:.1f}s " + " ".join(
                 f"{h}:err_mean={out[f'{h}_err'].mean() * 100:.2f}cm" for h in hands), flush=True)
+    save_manifest(args.out, args, n_traj=len(glob.glob(os.path.join(args.out, "traj_*.npz"))))
 
 
 if __name__ == "__main__":

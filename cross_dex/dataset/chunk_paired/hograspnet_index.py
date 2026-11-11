@@ -24,7 +24,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 
-from cross_dex.dataset.chunk_paired import DATA_ROOT
+from cross_dex.dataset.chunk_paired import DATA_ROOT, save_manifest
 
 SEQ = re.compile(r"(?P<date>\d+)_S(?P<subj>\d+)_obj_(?P<obj>\d+)_grasp_(?P<feix>\d+)$")
 
@@ -109,6 +109,7 @@ def main():
     json.dump({"per_feix": summ, "total": tot, "subjects": len(by_subj), "args": vars(a)},
               open(os.path.join(os.path.dirname(a.out), "stats.json"), "w"), indent=1)
     print(json.dumps(tot))
+    save_manifest(a.out, a, total=tot)
     for g, s in summ.items():
         print(f"feix {g:2d}", s)
 

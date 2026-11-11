@@ -24,6 +24,8 @@ import torch
 
 from dexverse_xlvla.hands import CanonicalHandModel
 
+from cross_dex.dataset.chunk_paired import save_manifest
+
 POSE_NAMES = ["open", "pinch_index", "pinch_middle", "pinch_ring", "pinch_little"]
 
 
@@ -108,6 +110,7 @@ def main():
     with open(os.path.splitext(a.out)[0] + ".json", "w") as f:
         json.dump(report, f, indent=1)
     print("chunks", len(meta), {h: out[f"{h}_q"].shape for h in hands})
+    save_manifest(a.out, a, n_chunks=len(meta))
 
 
 if __name__ == "__main__":
