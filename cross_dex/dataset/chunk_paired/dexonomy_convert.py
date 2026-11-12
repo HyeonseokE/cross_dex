@@ -80,6 +80,54 @@ def trajectory(keys: np.ndarray, d_close: float, fps: float) -> np.ndarray:   # 
     return np.concatenate(segs)
 
 
+def convert_all_type(args):
+    """--all: every grasp of one type, keyframes only (pregrasp, grasp, squeeze) -> shards of <= shard_size grasps."""
+    tdir, root, out, shard_size = args
+    fk = ShadowFK(os.path.join(root, "hand", "right.xml"))
+    gdir = os.path.join(root, "Dexonomy_GRASP_shadow", "succ_collect")
+    g = int(tdir.split("_")[0])
+    name = re.sub(r"^\d+_", "", tdir)
+    files = sorted(glob.glob(os.path.join(gdir, tdir, "*", "*", "*.npy")))
+    buf = {"id": [], "kp": [], "q": [], "src": []}
+    n_shard, n_total = 0, 0
+
+    def flush():
+        nonlocal n_shard
+        if not buf["id"]:
+            return
+        kp = np.stack(buf["kp"]).astype(np.float32)                     # [N, 3, 21, 3]
+        np.savez(os.path.join(out, f"D{g:02d}_{n_shard:03d}.npz"), trajectory_id=np.array(buf["id"]),
+                 action_label=np.array([f"feix{g:02d}-{name}"] * len(buf["id"])), feix=np.full(len(buf["id"]), g),
+                 offsets=np.arange(0, 3 * len(buf["id"]) + 1, 3, dtype=np.int64), t=np.tile(np.arange(3) / 60.0, len(buf["id"])),
+                 joints=kp.reshape(-1, 21, 3), wrist_rotvec=root_rotvec_from_keypoints(kp.reshape(-1, 21, 3).astype(np.float64)).astype(np.float32),
+                 mano_shape=np.zeros((len(buf["id"]), 10), np.float32), shadow_q=np.stack(buf["q"]).astype(np.float32),
+                 src=np.array(buf["src"]), keyframes=np.array(True))
+        n_shard += 1
+        for k in buf:
+            buf[k].clear()
+
+    for f in files:
+        try:
+            d = np.load(f, allow_pickle=True).item()
+        except Exception:   # noqa: BLE001
+            continue
+        rel = os.path.relpath(f, gdir)
+        for k in range(len(d["grasp_qpos"])):
+            keys = np.stack([d["pregrasp_qpos"][k, 7:], d["grasp_qpos"][k, 7:], d["squeeze_qpos"][k, 7:]]).astype(np.float64)
+            kp = fk.keypoints(keys)
+            if not np.isfinite(kp).all():
+                continue
+            buf["id"].append(f"D{g:02d}/{rel.replace('/', '__')[:-4]}/{k}")
+            buf["kp"].append(kp)
+            buf["q"].append(keys)
+            buf["src"].append(f"{rel}:{k}")
+            n_total += 1
+            if len(buf["id"]) >= shard_size:
+                flush()
+    flush()
+    return g, n_total, n_shard
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="/workspace/datasets/dexverse/grasp_taxonomy/dexonomy")
@@ -88,8 +136,24 @@ def main():
     ap.add_argument("--per_feix", type=int, default=400)
     ap.add_argument("--fps", type=float, default=60.0)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--all", action="store_true", help="every grasp, keyframes only (shards); trajectories are made in the robot "
+                    "joint space after retargeting (build step)")
+    ap.add_argument("--shard_size", type=int, default=20000)
+    ap.add_argument("--workers", type=int, default=31)
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
+    if a.all:
+        from concurrent.futures import ProcessPoolExecutor
+        gdir = os.path.join(a.root, "Dexonomy_GRASP_shadow", "succ_collect")
+        types = sorted(os.listdir(gdir), key=lambda s: int(s.split("_")[0]))
+        stats = {}
+        with ProcessPoolExecutor(a.workers) as ex:
+            for g, n, ns in ex.map(convert_all_type, [(t, a.root, a.out, a.shard_size) for t in types]):
+                stats[g] = {"grasps": n, "shards": ns}
+                print(g, stats[g], flush=True)
+        json.dump(stats, open(os.path.join(os.path.dirname(a.out.rstrip("/")), "convert_all_stats.json"), "w"), indent=1)
+        save_manifest(a.out, a, per_feix=stats, total=sum(v["grasps"] for v in stats.values()))
+        return
     fk = ShadowFK(os.path.join(a.root, "hand", "right.xml"))
     timing = json.load(open(a.timing))["close"]
     rng = np.random.default_rng(a.seed)

@@ -50,6 +50,10 @@ ap.add_argument("--fps", type=float, default=60.0)
 ap.add_argument("--shards", default="0", help="comma list of shard indices or a:b range")
 ap.add_argument("--max_traj", type=int, default=0, help="per shard, 0 = all")
 ap.add_argument("--select", default="", help="select_trajs.py json: retarget exactly these trajectories (overrides --shards/--per_label)")
+ap.add_argument("--keyframe_shards", action="store_true",
+                help="input = dexonomy_convert --all shards (3 keyframes per grasp): one output shard per input shard with "
+                     "<hand>_q / <hand>_err / <hand>_pen_mm per keyframe (no links / canonical arrays); --part splits the shard files")
+ap.add_argument("--kf_err", type=int, default=0, help="keyframe mode: also compute the DexPilot residual (slower)")
 ap.add_argument("--part", default="0/1", help="i/P: this process takes every P-th selected trajectory starting at i")
 ap.add_argument("--per_label", type=int, default=0,
                 help="keep at most N trajectories per grasp type over all shards (0 = all); labels '01' and '001-Palmar-Pinch' are one type")
@@ -322,6 +326,47 @@ def main():
         print(f"selection {args.select}: part {args.part} -> {sum(len(v) for v in mine.values())} trajectories", flush=True)
     else:
         jobs = [(files[si], None) for si in shard_list(args.shards, len(files))]
+    if args.keyframe_shards:
+        pi, pn = (int(x) for x in args.part.split("/"))
+        for path in files[pi::pn]:
+            dst = os.path.join(args.out, os.path.basename(path))
+            if os.path.exists(dst):
+                continue
+            z = np.load(path)
+            off, J = z["offsets"], z["joints"].astype(np.float64)
+            rot = mano_wrist_rotation(z["wrist_rotvec"].astype(np.float64)) if args.wrist_frame == "mano" else openxr_wrist_rotation(J)
+            res = {h: {"q": [], "err": [], "pen": []} for h in hands}
+            t0 = time.time()
+            for i in range(len(off) - 1):
+                for h, r in hands.items():
+                    r.reset()
+                    if args.collision_project:
+                        r.projector.reset()
+                    for k in range(off[i], off[i + 1]):
+                        hd = frame_hand_data(r.adjust(J[k]), rot[k], xr_map)
+                        q, dq = r(hd)
+                        pen = np.nan
+                        if args.collision_project:
+                            dq, _ = r.projector.project(dq)
+                            q = r.to_action(dq)
+                            pen = r.projector.penetration(dq)[0] * 1e3      # measured after the correction (mm)
+                        res[h]["q"].append(q)
+                        res[h]["err"].append(float(r.vector_residual(dq, hd).mean()) if args.kf_err else np.nan)
+                        res[h]["pen"].append(pen)
+                if (i + 1) % 1000 == 0:
+                    print(f"[{os.path.basename(path)}] {i + 1}/{len(off) - 1} grasps {time.time() - t0:.0f}s", flush=True)
+            out = {k: z[k] for k in ("trajectory_id", "action_label", "feix", "offsets", "src")}
+            out["dexonomy_q"] = z["shadow_q"]                     # original Dexonomy Shadow joints [N, 3, 22] (MJCF order)
+            for h in hands:
+                out[f"{h}_q"] = np.asarray(res[h]["q"], np.float32)
+                out[f"{h}_err"] = np.asarray(res[h]["err"], np.float32)
+                out[f"{h}_pen_mm"] = np.asarray(res[h]["pen"], np.float32)
+            tmp = dst[:-4] + ".tmp.npz"
+            np.savez(tmp, **out)
+            os.replace(tmp, dst)
+            print(f"[{os.path.basename(path)}] done {len(off) - 1} grasps {time.time() - t0:.0f}s", flush=True)
+        save_manifest(args.out, args, part=args.part)
+        return
     for path, idx in jobs:
         z = dict(np.load(path))
         off = z["offsets"]
