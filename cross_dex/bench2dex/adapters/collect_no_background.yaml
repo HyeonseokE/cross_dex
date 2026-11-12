@@ -1,0 +1,4 @@
+# Bench2Dex collect config without the iTHOR background scene (teleop practice / slow GPUs). Everything else comes
+# from the collector defaults (collector/config.py DEFAULT_COLLECT_CONFIG). Used by b2d_session.sh with B2D_BACKGROUND=0.
+scene_background:
+  enabled: false

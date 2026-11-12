@@ -88,7 +88,11 @@ def start_manus_quest_teleop(args_cli, hand_type: str, robot_art):
     )
     ctrl = make_controller_class()(source, hand_type, enable_right=True, enable_left=True,
                                    wrist_smoothing=args_cli.xr_wrist_smoothing)
-    bridge = XrIsaacLabBridge(ctrl, robot_art, pos_scale=args_cli.xr_pos_scale, log_every=args_cli.xr_stream_log)
+    # Jump rejection is per poll: at the ~6 Hz the Bench2Dex loop ran on bs1 (2026-11-12, ithor background) a normal
+    # hand move exceeds the 8 cm default and re-anchors every few polls. B2D_MAX_STEP_M / B2D_RELOCK_POLLS override.
+    bridge = XrIsaacLabBridge(ctrl, robot_art, pos_scale=args_cli.xr_pos_scale, log_every=args_cli.xr_stream_log,
+                              max_target_step_m=float(os.environ.get("B2D_MAX_STEP_M", "0.25")),
+                              relock_after_lost_polls=int(os.environ.get("B2D_RELOCK_POLLS", "6")))
     if not bridge.start():
         print("[WARN] Manus + Quest teleop failed to start. Running without teleop.")
         bridge.stop()

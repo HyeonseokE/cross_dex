@@ -18,7 +18,7 @@ import numpy as np
 
 from cross_dex.dataset.chunk_paired import DATA_ROOT, save_manifest
 
-# DexCanvas / SNAP order: palm(wrist) 0, index mcp/pip/dip 1-3, middle 4-6, ring 7-9, pinky 10-12, thumb cmc/mcp/ip 13-15,
+# common keypoint order (handframe.DC, = DexCanvas / SNAP): palm(wrist) 0, index mcp/pip/dip 1-3, middle 4-6, ring 7-9, pinky 10-12, thumb cmc/mcp/ip 13-15,
 # tips thumb/index/middle/ring/pinky 16-20
 CHAINS = {"thumb": [13, 14, 15, 16], "index": [1, 2, 3, 17], "middle": [4, 5, 6, 18], "ring": [7, 8, 9, 19],
           "pinky": [10, 11, 12, 20]}
@@ -41,7 +41,7 @@ def main():
     a = ap.parse_args()
     s0, s1, st = (int(x) for x in a.shards.split(":"))
     per = {f: {"meta": [], "phal": []} for f in CHAINS}
-    for fn in sorted(glob.glob(os.path.join(a.data, "train-*.npz")))[s0:s1:st]:
+    for fn in sorted(glob.glob(os.path.join(a.data, "*.npz")))[s0:s1:st]:
         with np.load(fn) as z:
             off, J = z["offsets"], z["joints"]
             for i in range(len(off) - 1):

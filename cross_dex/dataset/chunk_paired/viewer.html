@@ -19,6 +19,8 @@
   .cell canvas { display:block; width:100%; height:100%; }
   .tag { position:absolute; left:8px; top:6px; font-weight:600; pointer-events:none; }
   .tag span { font-weight:400; color:var(--muted); margin-left:6px; }
+  .tag em { display:block; font-style:normal; font-weight:400; }
+  .cell.pen { border:3px solid #e03131; }
   #legend { padding:0 12px 6px; color:var(--muted); }
   #legend i { display:inline-block; width:18px; height:3px; vertical-align:middle; margin:0 4px 0 10px; }
 </style>
@@ -38,6 +40,9 @@
   <select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option></select>
   <input id="slider" type="range" min="0" max="0" value="0">
   <span id="fr"></span>
+  <select id="sort"><option value="id">정렬: id</option><option value="pen">정렬: 관통 큰 순</option></select>
+  <select id="worst"><option value="">최악 프레임으로 ▾</option></select>
+  <label id="rawL" style="display:none"><input id="raw" type="checkbox"> 충돌 보정 전</label>
   <label><input id="showHuman" type="checkbox" checked> 사람 손</label>
   <label><input id="showRobot" type="checkbox" checked> 로봇 메시</label>
 </header>
@@ -56,10 +61,35 @@ const FINGERS = [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18
 const HUMAN_TIPS = [4,8,12,16,20];
 const meta = await (await fetch("/api/meta")).json();
 const epSel = document.getElementById("ep");
-for (const e of meta.episodes) {
-  const o = document.createElement("option"); o.value = e.id;
-  o.textContent = `${e.id.slice(0, 8)} · ${e.label || "-"} · T=${e.T} · ` + meta.hands.map(h => `${h} ${e.err_cm[h]}cm`).join(" / ");
-  epSel.appendChild(o);
+const maxPen = e => e.pen_mm ? Math.max(...Object.values(e.pen_mm)) : 0;
+function fillEps() {
+  const cur = epSel.value, eps = [...meta.episodes];
+  if (document.getElementById("sort").value === "pen") eps.sort((a, b) => maxPen(b) - maxPen(a));
+  epSel.innerHTML = "";
+  for (const e of eps) {
+    const o = document.createElement("option"); o.value = e.id;
+    o.textContent = `${e.id.slice(0, 14)} · ${e.label || "-"} · T=${e.T} · ` + meta.hands.map(h => `${h} ${e.err_cm[h]}cm` +
+      (e.pen_mm && h in e.pen_mm ? `/${e.pen_mm[h]}mm` : "")).join(" / ");
+    epSel.appendChild(o);
+  }
+  if (cur) epSel.value = cur;
+}
+fillEps();
+if (!meta.collision) { document.getElementById("sort").style.display = "none"; document.getElementById("worst").style.display = "none"; }
+const worstSel = document.getElementById("worst");
+for (const h of meta.hands) { const o = document.createElement("option"); o.value = h; o.textContent = `최악 프레임: ${h}`; worstSel.appendChild(o); }
+worstSel.onchange = () => { const d = ep && ep.hands[worstSel.value]; if (d && d.pen) { k = d.pen.worst_frame; slider.value = k; playing = false;
+  document.getElementById("play").textContent = "▶ 재생"; draw(); } worstSel.value = ""; };
+document.getElementById("sort").onchange = fillEps;
+// collision geometry name (e.g. "lfdistal_0") -> link name; tint the worst pair red
+const redMat = new THREE.MeshStandardMaterial({ color: 0xe03131, metalness: 0.1, roughness: 0.6 });
+function tintLink(link, mat) { const walk = o => { for (const c of o.children) { if (c.isURDFJoint) continue;
+  if (c.isMesh) { if (!c.userData.mat0) c.userData.mat0 = c.material; c.material = mat || c.userData.mat0; } walk(c); } }; walk(link); }
+function tint(p) {
+  if (!p.robot) return;
+  for (const l of Object.values(p.robot.links)) tintLink(l, null);
+  const pair = p.data && p.data.pen && p.data.pen.worst_pair;
+  if (pair) for (const g of pair) { const l = p.robot.links[g.replace(/_\d+$/, "")]; if (l) tintLink(l, redMat); }
 }
 const meshMat = new THREE.MeshStandardMaterial({ color: 0x9aa5b1, metalness: 0.1, roughness: 0.6 });
 function loadMesh(path, manager, done) {
@@ -110,7 +140,8 @@ const slider = document.getElementById("slider"), fr = document.getElementById("
 async function loadEp(id) {
   ep = await (await fetch(`/api/ep/${id}`)).json();
   slider.max = ep.human.length - 1; k = 0; slider.value = 0;
-  for (const p of panels) p.data = ep.hands[p.h];
+  for (const p of panels) { p.data = ep.hands[p.h]; tint(p); }
+  document.getElementById("rawL").style.display = Object.values(ep.hands).some(d => d.dexq_raw) ? "" : "none";
   draw();
 }
 const v3 = new THREE.Vector3();
@@ -120,11 +151,19 @@ function draw() {
   for (const p of panels) {
     const d = p.data; if (!d) continue;
     p.tag.querySelector("span").textContent = `프레임 오차 ${d.err[k].toFixed(2)} cm · scaling ${d.scaling}` + (d.finger_k ? ` · 손가락 길이 보정 엄지 ${d.finger_k.thumb.toFixed(2)} 새끼 ${d.finger_k.pinky.toFixed(2)}` : " · 길이 보정 없음");
+    let em = p.tag.querySelector("em"); if (!em) { em = document.createElement("em"); p.tag.appendChild(em); }
+    const s = meta.pen_stride || 1, near = d.pen ? d.pen.pen_frames.some(f => Math.abs(f - k) < s / 2 + 0.5) : false;
+    p.cell.classList.toggle("pen", near);
+    em.textContent = d.pen ? `관통 최대 ${d.pen.max_pen_mm} mm @${d.pen.worst_frame} (${(d.pen.worst_pair || []).join(" ↔ ")}, 빨강) · 관통 프레임 ${(d.pen.pen_frac * 100).toFixed(0)}%` +
+      (near ? " · 지금 프레임 관통" : "") + (d.pen.max_pen_mm >= 50 ? " · 50 mm=EPA 실패 상한" : "") : "";
+    if (d.pen_mm) em.textContent += ` · 충돌 보정: 이 프레임 ${d.pen_mm[k][0]}→${d.pen_mm[k][1]} mm, 관절 이동 최대 ` +
+      `${(Math.max(...d.dexq[k].map((v, i) => Math.abs(v - d.dexq_raw[k][i]))) * 57.3).toFixed(1)}°`;
     let palm = new THREE.Vector3();
     if (p.robot) {
       p.robot.visible = document.getElementById("showRobot").checked;
-      d.dex_joint_names.forEach((n, i) => { if (p.robot.joints[n]) p.robot.setJointValue(n, d.dexq[k][i]); });
-      p.robot.updateMatrixWorld(true);
+      const Q = (document.getElementById("raw").checked && d.dexq_raw) ? d.dexq_raw : d.dexq;
+      d.dex_joint_names.forEach((n, i) => { if (p.robot.joints[n]) p.robot.setJointValue(n, Q[k][i]); });
+      p.robot.updateMatrixWorld(true); tint(p);   // meshes arrive asynchronously -> re-tint on every draw
       if (p.robot.links[d.palm_link]) p.robot.links[d.palm_link].getWorldPosition(palm);
     }
     p.human.visible = document.getElementById("showHuman").checked;
@@ -149,7 +188,7 @@ function loop(t) {
 }
 slider.oninput = () => { k = +slider.value; draw(); };
 document.getElementById("play").onclick = e => { playing = !playing; e.target.textContent = playing ? "⏸ 정지" : "▶ 재생"; };
-document.getElementById("showHuman").onchange = draw; document.getElementById("showRobot").onchange = draw;
+document.getElementById("showHuman").onchange = draw; document.getElementById("raw").onchange = draw; document.getElementById("showRobot").onchange = draw;
 epSel.onchange = () => loadEp(epSel.value);
 resize(); requestAnimationFrame(loop);
 if (meta.episodes.length) loadEp(meta.episodes[0].id);

@@ -86,9 +86,35 @@ class HandCollision:
         self.names = [g.name for g in self.geom.geometryObjects]
         assert self.pairs, f"no finger-finger collision pairs in {urdf} (fingers {sorted(set(finger))})"
 
+    def _shift_depth(self, a: int, b: int) -> float:
+        """Penetration of a pair whose EPA failed: distance b must be moved away from a (along the line between the
+        geometry centres) until the boolean GJK test reports no collision; bisection to 0.05 mm, capped at 5 cm."""
+        ga, gb = self.geom.geometryObjects[a].geometry, self.geom.geometryObjects[b].geometry
+        Ma, Mb = self.gdata.oMg[a], self.gdata.oMg[b]
+        n = Mb.translation - Ma.translation
+        n = n / max(np.linalg.norm(n), 1e-9)
+        Ta = fcl.Transform3f(Ma.rotation, Ma.translation)
+        req = fcl.CollisionRequest()
+
+        def hit(t):
+            res = fcl.CollisionResult()
+            return fcl.collide(ga, Ta, gb, fcl.Transform3f(Mb.rotation, Mb.translation + t * n), req, res) > 0
+
+        lo, hi = 0.0, 0.05
+        if hit(hi):
+            return 0.05
+        while hi - lo > 5e-5:
+            m = 0.5 * (lo + hi)
+            lo, hi = (m, hi) if hit(m) else (lo, m)
+        return hi
+
     def penetration(self, dex_q: np.ndarray) -> tuple[float, tuple[str, str] | None]:
         """Deepest finger-finger penetration (m, 0 = none) and its geometry pair. Collision test with contacts (GJK/EPA),
-        much faster than the full distance query."""
+        much faster than the full distance query.
+
+        EPA fails (inf / nan depth) on nearly touching hulls, depending on the query (the same pose measured 1.5 mm or
+        inf, 2026-11-11); a failed pair is measured by _shift_depth instead (separating translation, an upper bound of the
+        penetration depth)."""
         q = pin.neutral(self.model)
         q[self.q_index] = dex_q
         pin.updateGeometryPlacements(self.model, self.data, self.geom, self.gdata, q)
@@ -96,10 +122,11 @@ class HandCollision:
         best, pair = 0.0, None
         for i, res in enumerate(self.gdata.collisionResults):
             if self.active[i] and res.isCollision():
-                d = max(abs(res.getContact(k).penetration_depth) for k in range(res.numContacts()))
-                d = min(d, 0.05) if np.isfinite(d) else 0.05   # EPA can fail on deep overlaps (inf) -> cap at 5 cm
+                a, b = self.pairs[i]
+                ds = [abs(res.getContact(k).penetration_depth) for k in range(res.numContacts())]
+                ok = ds and all(np.isfinite(x) and x < 0.05 for x in ds)   # EPA failure: inf / nan / ~1e308
+                d = max(ds) if ok else self._shift_depth(a, b)
                 if d > best:
-                    a, b = self.pairs[i]
                     best, pair = d, (self.names[a], self.names[b])
         return best, pair
 
@@ -165,7 +192,7 @@ def main():
     a = ap.parse_args()
     meta = json.load(open(os.path.join(a.rt, "meta.json")))
     hands = a.hands.split(",") if a.hands else list(meta["hands"])
-    files = sorted(glob.glob(os.path.join(a.rt, "traj_*.npz")))
+    files = sorted(glob.glob(os.path.join(a.rt, "*.npz")))
     if a.traj:
         files = [os.path.join(a.rt, f"{t}.npz") for t in a.traj.split(",")]
     rep = {}

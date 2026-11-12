@@ -8,7 +8,7 @@ Per subject -> <out>/S<subj>.npz: trial_key [N], feix [N], object_id [N], offset
 index, 10 fps grid), joints [sum T,21,3] (3D hand joints, source cm -> m, OpenPose order: wrist, thumb 1-4, index 1-4, ..., pinky 1-4),
 mano_pose [sum T,45] (finger joints only, no global rotation), mano_trans [sum T,3] (MANO fit units, with hand.mano_scale not applied), mano_betas [N,10],
 object_mat [sum T,4,4]. Stats (-> <out>/stats.json): per Feix type the trials, annotated frames and runs of consecutive
-frames (a run of >= --min_run frames at 10 fps covers one 16-step chunk at 60 Hz when >= 3 frames).
+frames (a run of >= 4 frames at 10 fps spans 0.3 s >= one 16-step chunk at 60 Hz).
 
   PYTHONPATH=/workspace/codes/cross_dex /workspace/envs/dexverse/lerobot/bin/python -m cross_dex.dataset.chunk_paired.hograspnet_index
 """
@@ -80,7 +80,7 @@ def main():
     ap.add_argument("--raw", default="/workspace/datasets/dexverse/grasp_taxonomy/hograspnet/labeling_data")
     ap.add_argument("--out", default=os.path.join(DATA_ROOT, "hograspnet", "annotations"))
     ap.add_argument("--workers", type=int, default=8)
-    ap.add_argument("--min_run", type=int, default=3, help="consecutive 10 fps frames that span a 16-step 60 Hz chunk")
+    ap.add_argument("--min_run", type=int, default=4, help="consecutive 10 fps frames; 4 frames span 0.3 s >= one 16-step 60 Hz chunk")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     by_subj: dict[int, list[str]] = {}

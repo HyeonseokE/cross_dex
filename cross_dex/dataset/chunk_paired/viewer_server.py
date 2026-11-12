@@ -25,9 +25,14 @@ ap.add_argument("--rt", required=True)
 ap.add_argument("--port", type=int, default=8770)
 ap.add_argument("--mesh_roots", default="/workspace/assets/dexverse,/workspace/assets/bench2dex",
                 help="comma list searched by mesh file name when a mesh is missing next to the URDF")
+ap.add_argument("--collision", default="", help="self_collision.py report (default: <rt>_selfcollision.json if present); "
+                "adds per-hand penetration, worst frame and worst pair to the viewer")
 args = ap.parse_args()
 
 META = json.load(open(os.path.join(args.rt, "meta.json")))
+_CP = args.collision or args.rt.rstrip("/") + "_selfcollision.json"
+_REP = json.load(open(_CP)) if os.path.isfile(_CP) else {}
+COL, COL_ARGS = _REP.get("per_traj", {}), _REP.get("args", {})
 HTML = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "viewer.html"), "rb").read()
 _MESH_INDEX: dict[str, list[str]] = {}
 _INDEX_LOCK = threading.Lock()
@@ -66,7 +71,9 @@ def episodes() -> list[dict]:
             if not all(f"{h}_dexq" in z.files for h in META["hands"]):
                 continue
             out.append({"id": os.path.basename(f)[:-4], "label": str(z["action_label"]), "T": int(len(z["t"])),
-                        "err_cm": {h: round(float(z[f"{h}_err"].mean()) * 100, 2) for h in META["hands"]}})
+                        "err_cm": {h: round(float(z[f"{h}_err"].mean()) * 100, 2) for h in META["hands"]},
+                        "pen_mm": {h: c[h]["max_pen_mm"] for h in META["hands"] if h in c}
+                        if (c := COL.get(os.path.basename(f)[:-4])) else None})
     return out
 
 
@@ -78,7 +85,9 @@ def episode(eid: str) -> dict:
                     "err": np.round(z[f"{h}_err"].mean(1) * 100, 2).tolist(), "scaling": m["scaling"],
                     "palm_link": m["origin_links"][-1], "tip_links": m["task_links"][-5:],
                     "human": np.round(z[f"{h}_human_canonical"], 5).tolist() if f"{h}_human_canonical" in z.files else None,
-                    "finger_k": m.get("finger_k")}
+                    "finger_k": m.get("finger_k"), "pen": COL.get(os.path.basename(eid), {}).get(h),
+                    "dexq_raw": np.round(z[f"{h}_dexq_raw"], 4).tolist() if f"{h}_dexq_raw" in z.files else None,
+                    "pen_mm": np.round(z[f"{h}_pen"] * 1e3, 1).tolist() if f"{h}_pen" in z.files else None}
     return {"fps": META["fps"], "label": str(z["action_label"]), "human": np.round(z["human_canonical"], 5).tolist(),
             "hands": hands}
 
@@ -98,7 +107,8 @@ class H(SimpleHTTPRequestHandler):
                 return self._send(HTML, "text/html; charset=utf-8")
             if p == "/api/meta":
                 return self._send(json.dumps({"hands": list(META["hands"]), "fps": META["fps"],
-                                              "wrist_frame": META.get("wrist_frame"), "episodes": episodes()}).encode(),
+                                              "wrist_frame": META.get("wrist_frame"), "collision": bool(COL),
+                                              "pen_stride": COL_ARGS.get("stride", 1), "pen_mm_thr": COL_ARGS.get("pen_mm"), "episodes": episodes()}).encode(),
                                   "application/json")
             if p.startswith("/api/ep/"):
                 return self._send(json.dumps(episode(p[len("/api/ep/"):])).encode(), "application/json")

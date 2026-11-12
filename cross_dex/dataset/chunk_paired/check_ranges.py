@@ -31,7 +31,7 @@ def main():
     ap.add_argument("--out", default="")
     a = ap.parse_args()
     meta = json.load(open(os.path.join(a.rt, "meta.json")))
-    files = sorted(glob.glob(os.path.join(a.rt, "traj_*.npz")))
+    files = sorted(glob.glob(os.path.join(a.rt, "*.npz")))
     rep = {"n_traj": len(files)}
     for h, hm in meta["hands"].items():
         names = hm["finger_joint_names"]

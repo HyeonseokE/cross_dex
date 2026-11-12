@@ -77,7 +77,9 @@ class ManusQuestHandSource:
         self._ctrl = HandMountedController()
         self._callbacks: Dict[str, Callable[[], None]] = {}
         self._tracked: Dict[str, object] = {}
+        self._placeholder: Dict[str, np.ndarray] = {}  # pose the runtime reports before / while a controller is untracked
         self._wrist: Dict[str, tuple] = {}  # side -> (pos (3,), R (3,3)) last valid wrist
+        self._rate_t0, self._rate_n = time.monotonic(), 0
         self._ctrl_prev: Dict[str, np.ndarray] = {}
         self._frozen = {s: 0 for s in SIDES}
         self._lost_since: Dict[str, float] = {}
@@ -170,6 +172,15 @@ class ManusQuestHandSource:
                 continue
             pose, newly = ctrl[0], not self._tracked[side].tracked
             if not self._tracked[side].update(pose):
+                self._placeholder[side] = pose.copy()  # constant pose before tracking = the XR anchor placeholder
+                continue
+            if side in self._placeholder and np.allclose(pose, self._placeholder[side], atol=1e-6):
+                # The runtime falls back to the placeholder when it loses the controller: hold the wrist (2026-11-12,
+                # the Bench2Dex session re-anchored on every placeholder <-> real transition).
+                if side not in self._lost_since:
+                    self._lost_since[side] = time.monotonic()
+                    self._lost_count[side] += 1
+                    print(f"[manus-quest] WARNING {side} controller untracked (placeholder pose): holding the wrist")
                 continue
             lost = self._position_lost(side, pose)
             if not lost:
@@ -226,9 +237,10 @@ class ManusQuestHandSource:
         self._polls += 1
         now = time.monotonic()
         if self._log_every > 0 and self._polls % self._log_every == 0 or now - self._last_log > 5.0:
+            rate = (self._polls - self._rate_n) / max(now - self._rate_t0, 1e-6); self._rate_t0, self._rate_n = now, self._polls
             self._last_log = now
             lost = ", ".join(f"{s} lost {n}x" for s, n in self._lost_count.items() if n)
-            print(f"[manus-quest] poll={self._polls:>6} {self._glove.status()} | hands "
+            print(f"[manus-quest] poll={self._polls:>6} {rate:4.1f} Hz {self._glove.status()} | hands "
                   + ", ".join(f"{s}:{'ok' if (s in out and out[s].tracked) else 'held' if s in out else '-'}" for s in SIDES)
                   + (f" | controller position {lost}" if lost else ""))
         return out

@@ -52,6 +52,9 @@ esac
 has_arg --teleop || ARGS+=(--teleop)
 has_arg --teleop-device || ARGS+=(--teleop-device manus-quest)
 has_arg --xr-stream-log || ARGS+=(--xr-stream-log 100)
+has_arg --log-level || ARGS+=(--log-level INFO)   # "profile step=..." lines: loop rate and its breakdown
+# B2D_BACKGROUND=0: no iTHOR background scene (heavy to render; the loop fell to ~6 Hz on bs1's 2080 Ti, 2026-11-12)
+if [[ "${B2D_BACKGROUND:-1}" == "0" ]] && ! has_arg --collect-config; then ARGS+=(--collect-config "${HERE}/collect_no_background.yaml"); fi
 if [[ ${headless} == 1 ]] && ! has_arg --headless; then ARGS+=(--headless); fi
 if [ -f "${CXR_ENV}" ]; then set -a; source "${CXR_ENV}"; set +a; fi
 unset PYTHONPATH
