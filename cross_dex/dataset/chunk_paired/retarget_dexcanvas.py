@@ -53,6 +53,7 @@ ap.add_argument("--select", default="", help="select_trajs.py json: retarget exa
 ap.add_argument("--keyframe_shards", action="store_true",
                 help="input = dexonomy_convert --all shards (3 keyframes per grasp): one output shard per input shard with "
                      "<hand>_q / <hand>_err / <hand>_pen_mm per keyframe (no links / canonical arrays); --part splits the shard files")
+ap.add_argument("--shard_list", default="", help="keyframe mode: only these shard file names (one per line), split by --part")
 ap.add_argument("--kf_err", type=int, default=0, help="keyframe mode: also compute the DexPilot residual (slower)")
 ap.add_argument("--part", default="0/1", help="i/P: this process takes every P-th selected trajectory starting at i")
 ap.add_argument("--per_label", type=int, default=0,
@@ -62,8 +63,8 @@ ap.add_argument("--finger_lengths", default=os.path.join(DATA_ROOT, "dexcanvas",
                      "wrist->tip length matches the robot finger proportions ('' = off)")
 ap.add_argument("--no_palm_length", action="store_true",
                 help="with --finger_lengths: keep the human palm (wrist -> knuckles) instead of matching the robot's")
-ap.add_argument("--palm_hands", default="inspire",
-                help="hands whose palm length is matched (2026-11-12: only inspire, whose origin link sits ~4.5 cm behind the "
+ap.add_argument("--palm_hands", default="inspire,linkerhand",
+                help="hands whose palm length is matched (2026-11-12: inspire, whose origin link sits ~4.5 cm behind the knuckles, and LinkerHand, palm 15 cm; "
                      "knuckles; on shadow / sharpa / wuji it moved the data away from the teleop demonstrations)")
 ap.add_argument("--collision_project", action="store_true",
                 help="move each solved dex_q to the closest pose without finger-finger penetration (collision_project.py); "
@@ -138,8 +139,12 @@ class TeleopFingerRetargeter:
 
     def __init__(self, hand: str):
         self.hand = hand
-        cfg = SimpleRelativeRetargeterCfg(robot_type=f"floating_{hand}_right", sim_device="cpu", debug_vis=False)
-        self.rt = SimpleRelativeRetargeter(cfg)
+        from cross_dex.dataset.chunk_paired.custom_hands import CUSTOM_HANDS, make_custom_retargeter
+        if hand in CUSTOM_HANDS:      # DexJoCo-X hands (custom_hands.py): same teleop finger path, swapped hand spec
+            self.rt, _ = make_custom_retargeter(hand)
+        else:
+            cfg = SimpleRelativeRetargeterCfg(robot_type=f"floating_{hand}_right", sim_device="cpu", debug_vis=False)
+            self.rt = SimpleRelativeRetargeter(cfg)
         layout = self.rt._layout["hands"][RIGHT]
         self.finger_indices = np.asarray(layout["finger_indices"])
         self.finger_joint_names = list(layout.get("finger_joint_names", ()))
@@ -175,28 +180,30 @@ class TeleopFingerRetargeter:
         lo, hi = self.robot.joint_limits[:, 0], self.robot.joint_limits[:, 1]
         self.robot.compute_forward_kinematics(np.clip(np.zeros(self.robot.dof), lo, hi))
         pos = lambda n: self.robot.get_link_pose(self.robot.get_link_index(n))[:3, 3]   # noqa: E731
+        nf = int(getattr(self.dex.optimizer, "num_fingers", 5))              # 5, or 4 (allegro / leap: no little finger)
+        fingers = FINGERS[:nf]                                                # DexPilot fingertip order: thumb, index, ...
         origin = pos(self.origin_links[-1])
-        robot = np.array([np.linalg.norm(pos(t) - pos(o)) for o, t in zip(self.origin_links[-5:], self.task_links[-5:])])
+        robot = np.array([np.linalg.norm(pos(t) - pos(o)) for o, t in zip(self.origin_links[-nf:], self.task_links[-nf:])])
         # finger root = first joint of a tip's kinematic chain below the joints shared by all five fingers
         model, data = self.robot.model, self.robot.data
-        fr = [model.frames[model.getFrameId(t)] for t in self.task_links[-5:]]
+        fr = [model.frames[model.getFrameId(t)] for t in self.task_links[-nf:]]
         sups = [list(model.supports[getattr(f, "parentJoint", None) or f.parent]) for f in fr]   # pinocchio 2: .parent
         c0 = 0
         while all(len(s) > c0 + 1 for s in sups) and len({s[c0] for s in sups}) == 1:
             c0 += 1
         roots = np.array([data.oMi[s[c0]].translation for s in sups])
-        self.robot_palm = {f: round(float(np.linalg.norm(roots[i] - origin)), 4) for i, f in enumerate(FINGERS)}
+        self.robot_palm = {f: round(float(np.linalg.norm(roots[i] - origin)), 4) for i, f in enumerate(fingers)}
         human_palm = np.mean([human[f]["meta"] for f in ("index", "middle", "ring")])
         robot_palm = np.mean([self.robot_palm[f] for f in ("index", "middle", "ring")])
         self.palm_shift = float(robot_palm / self.scaling - human_palm) if palm else 0.0
-        tot = np.array([human[f]["total"] + (self.palm_shift if f != "thumb" else 0.0) for f in FINGERS])
+        tot = np.array([human[f]["total"] + (self.palm_shift if f != "thumb" else 0.0) for f in fingers])
         ratio = robot / (tot * self.scaling)
         c = ratio[1:4].mean()
-        self.finger_target = {f: float(robot[i] / (self.scaling * c)) for i, f in enumerate(FINGERS)}
+        self.finger_target = {f: float(robot[i] / (self.scaling * c)) for i, f in enumerate(fingers)}
         # reported factors (median human, long fingers' meta + palm_shift); the applied ones are computed per frame
         self.finger_k = {f: float(np.clip((self.finger_target[f] - human[f]["meta"] - (self.palm_shift if f != "thumb" else 0.0))
-                                          / human[f]["phal"], 0.7, 1.6)) for f in FINGERS}
-        self.finger_ratio = {f: round(float(ratio[i] / c), 3) for i, f in enumerate(FINGERS)}
+                                          / human[f]["phal"], 0.7, 1.6)) for f in fingers}
+        self.finger_ratio = {f: round(float(ratio[i] / c), 3) for i, f in enumerate(fingers)}
 
     def adjust(self, joints: np.ndarray) -> np.ndarray:
         """[21,3] DC joints -> wrist moved by palm_shift along knuckles->wrist, then each finger's bones after its root
@@ -208,6 +215,8 @@ class TeleopFingerRetargeter:
         u = joints[DCI["palm"]] - knuck
         j[DCI["palm"]] = joints[DCI["palm"]] + self.palm_shift * u / max(np.linalg.norm(u), 1e-9)
         for f, chain in CHAINS.items():
+            if f not in self.finger_target:                   # finger the hand does not have (4-finger hands: little)
+                continue
             root = joints[chain[0]]
             meta = np.linalg.norm(root - j[DCI["palm"]])
             phal = sum(np.linalg.norm(joints[chain[i + 1]] - joints[chain[i]]) for i in range(len(chain) - 1))
@@ -328,7 +337,11 @@ def main():
         jobs = [(files[si], None) for si in shard_list(args.shards, len(files))]
     if args.keyframe_shards:
         pi, pn = (int(x) for x in args.part.split("/"))
-        for path in files[pi::pn]:
+        kf_files = files
+        if args.shard_list:
+            want = {l.strip() for l in open(args.shard_list) if l.strip()}
+            kf_files = [f for f in files if os.path.basename(f) in want]
+        for path in kf_files[pi::pn]:
             dst = os.path.join(args.out, os.path.basename(path))
             if os.path.exists(dst):
                 continue

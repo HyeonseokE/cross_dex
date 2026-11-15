@@ -43,7 +43,9 @@ def git_commit(path):
 
 @torch.no_grad()
 def evaluate(model, X, idx, mean, std, hands, bs=4096):
-    """Val metrics: per-hand recon / cross-recon MAE (deg, un-normalised), retrieval top-1, jerk ratio."""
+    """Val metrics (2026-11-12, user selection): self / cross reconstruction MAE (deg, un-normalised; cross = alignment) and
+    jerk ratio; the teleop test MAE (coverage of the task actions) is added in main(). The former retrieval top-1 was
+    dropped: overlapping windows of one trajectory (12 of 16 steps shared) counted as wrong matches."""
     model.eval()
     acc = {}
     n = 0
@@ -63,14 +65,6 @@ def evaluate(model, X, idx, mean, std, hands, bs=4096):
                     acc[f"jerk_ratio/{h}"] = acc.get(f"jerk_ratio/{h}", 0.0) + float(jy / jg.clamp_min(1e-9)) * len(b)
         n += len(b)
     out = {k: v / n for k, v in acc.items()}
-    # retrieval: does hand a's latent find the paired chunk of hand b among 1024 val chunks
-    b = idx[:1024]
-    z = {h: torch.nn.functional.normalize(model.encode(h, X[h][b]).flatten(1), dim=-1) for h in hands}
-    r = []
-    for i, a in enumerate(hands):
-        for c in hands[i + 1:]:
-            r.append(float(((z[a] @ z[c].t()).argmax(1) == torch.arange(len(b), device=z[a].device)).float().mean()))
-    out["retrieval_top1"] = float(np.mean(r))
     out["mae_deg/self"] = float(np.mean([out[f"mae_deg/{h}->{h}"] for h in hands]))
     out["mae_deg/cross"] = float(np.mean([out[f"mae_deg/{h}->{g}"] for h in hands for g in hands if g != h]))
     model.train()
@@ -111,6 +105,9 @@ def main():
     ap.add_argument("--steps2", type=int, default=40000)
     ap.add_argument("--w_contr", type=float, default=0.1)
     ap.add_argument("--w_cross", type=float, default=1.0)
+    ap.add_argument("--sources", default="", help="comma list of dataset sources to train on (default all), e.g. dexonomy")
+    ap.add_argument("--kf", default="", help="build_keyframes.py dir: paired chunks generated on the fly (min-jerk) and mixed into every batch")
+    ap.add_argument("--kf_ratio", type=float, default=0.5, help="share of each paired batch drawn from --kf")
     ap.add_argument("--teleop", default="", help="comma list of teleop_chunks.py npz mixed into stage 2 (self recon only, unpaired)")
     ap.add_argument("--w_teleop", type=float, default=1.0)
     ap.add_argument("--teleop_test", default="", help="teleop_chunks.py npz used only as a test set (val metric teleop_mae_deg)")
@@ -149,7 +146,11 @@ def main():
         dmeta["H"], a.K = 1, 1
     split, feix = z["split"], z["feix"]
     tr_idx, va_idx = np.where(split == 0)[0], np.where(split == 1)[0]
-    if a.balance:
+    if a.sources:                                  # keep only these data sources (names as in the dataset meta); "none" = no chunk data
+        keep = np.isin(z["source"], [dmeta["sources"].index(s) for s in a.sources.split(",") if s != "none"])
+        tr_idx, va_idx = tr_idx[keep[tr_idx]], va_idx[keep[va_idx]]
+        print("sources", a.sources, "train", len(tr_idx), "val", len(va_idx), flush=True)
+    if a.balance and len(tr_idx):
         types, inv = np.unique(feix[tr_idx], return_inverse=True)
         w = 1.0 / np.bincount(inv)[inv]
         p = torch.tensor(w / w.sum(), device=dev, dtype=torch.float)
@@ -161,11 +162,27 @@ def main():
                 if f"q_{h}" in zt.files:
                     out[h].append(zt[f"q_{h}"])
         return {h: ((torch.from_numpy(np.concatenate(v)).to(dev) - mean[h]) / std[h])[:, :dmeta["H"]] for h, v in out.items() if v}
+    KF = None
+    if a.kf:
+        from cross_dex.latent.chunk_latent.kf_sampler import KeyframeSampler
+        kw = dict(src=dmeta.get("retarget_hand"), order=dmeta.get("order"), stretch=tuple(dmeta.get("stretch", (1.0, 1.0))))
+        KF = KeyframeSampler(a.kf, hands, mean, std, dmeta["H"], dmeta["fps"], dev, **kw)
+        KFV = KeyframeSampler(a.kf, hands, mean, std, dmeta["H"], dmeta["fps"], dev, split=1, **kw)
+        g = torch.Generator(device=dev); g.manual_seed(1234)
+        kf_val = KFV.sample(16384, gen=g)                 # fixed Dexonomy val chunks (val grasps, seeded timing / windows)
+        del KFV
+        print("keyframe grasps", KF.N, "val chunks", len(next(iter(kf_val.values()))), flush=True)
+        if not len(tr_idx):
+            a.kf_ratio = 1.0
     TEL = load_tel(a.teleop)
     TEST = load_tel(a.teleop_test)
     print("teleop train chunks", {h: len(v) for h, v in TEL.items()}, "teleop test chunks", {h: len(v) for h, v in TEST.items()}, flush=True)
     tr_t = torch.from_numpy(tr_idx).to(dev)
     va_t = torch.from_numpy(va_idx).to(dev)
+    XV = {h: X[h][va_t] for h in hands}                    # val = chunk-data val (+ fixed keyframe val chunks)
+    if KF is not None:
+        XV = {h: torch.cat([XV[h], kf_val[h]]) for h in hands}
+    va_all = torch.arange(len(XV[hands[0]]), device=dev)
     dofs = {h: X[h].shape[-1] for h in hands}
     model = ChunkLatent(dofs, dmeta["H"], a.K, a.d, a.width, a.layers, vae=bool(a.vae)).to(dev)
     n_params = sum(p_.numel() for p_ in model.parameters())
@@ -179,9 +196,17 @@ def main():
         if step == a.steps1 + 1:      # stage 2: decoders join, encoders fine-tuned
             opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=a.wd)
             sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, a.steps2)
-        bi = tr_t[torch.multinomial(p, a.batch, replacement=True)] if a.balance else \
-            tr_t[torch.randint(len(tr_t), (a.batch,), device=dev)]
-        L = losses(model, {h: X[h][bi] for h in hands}, tau_at(step, total), stage, a.w_contr, a.w_cross, a.w_vel, a.beta)
+        if len(tr_t):
+            bi = tr_t[torch.multinomial(p, a.batch, replacement=True)] if a.balance else \
+                tr_t[torch.randint(len(tr_t), (a.batch,), device=dev)]
+            xb = {h: X[h][bi] for h in hands}
+        else:
+            xb = {h: X[h][:0] for h in hands}
+        if KF is not None:
+            nk = int(a.batch * a.kf_ratio)
+            kb = KF.sample(nk)
+            xb = {h: torch.cat([xb[h][: a.batch - nk], kb[h]]) for h in hands}
+        L = losses(model, xb, tau_at(step, total), stage, a.w_contr, a.w_cross, a.w_vel, a.beta)
         if stage == 2 and TEL:
             from cross_dex.latent.chunk_latent.model import _rec
             tl = []
@@ -203,7 +228,7 @@ def main():
                 for k, v in L.items():
                     f.write(f"{step},train,{k},{float(v):.6f}\n")
         if step % a.eval_every == 0 or step == total:
-            ev = evaluate(model, X, va_t, mean, std, hands)
+            ev = evaluate(model, XV, va_all, mean, std, hands)
             if TEST:
                 with torch.no_grad():
                     model.eval()
@@ -219,7 +244,7 @@ def main():
                 for k, v in ev.items():
                     f.write(f"{step},val,{k},{v:.6f}\n")
             print(f"[{step}/{total}] stage {stage} {time.time() - t0:.0f}s " + " ".join(f"{k}={float(v):.4f}" for k, v in L.items())
-                  + f" | val self {ev['mae_deg/self']:.2f}deg cross {ev['mae_deg/cross']:.2f}deg top1 {ev['retrieval_top1']:.3f}"
+                  + f" | val self {ev['mae_deg/self']:.2f}deg cross {ev['mae_deg/cross']:.2f}deg"
                   + (f" teleop {ev['teleop_mae_deg/mean']:.2f}deg " + str({h: round(ev[f'teleop_mae_deg/{h}'], 1) for h in TEST}) if TEST else ""), flush=True)
             ck = {"model": model.state_dict(), "args": vars(a), "dofs": dofs, "hands": hands, "H": dmeta["H"],
                   "norm": dmeta["norm"], "finger_joint_names": dmeta["finger_joint_names"], "data": a.data, "step": step, "val": ev}
