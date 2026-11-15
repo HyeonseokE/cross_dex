@@ -59,7 +59,7 @@ class RunRecord:
                      "status": "running"}
         self._dump()
         self.csv = open(f"{self.d}/metrics.csv", "w"); self.csv.write("step,split,metric,value\n")
-        self.bpe = cfg["batches_per_epoch"]; self.off = 0
+        self.bpe = cfg["batches_per_epoch"]; self.off = 0; self.last = 0      # last: stage 2 may be the first stage logged (--stage1_ckpt)
 
     def _dump(self):
         json.dump(self.meta, open(f"{self.d}/meta.json", "w"), indent=1)
