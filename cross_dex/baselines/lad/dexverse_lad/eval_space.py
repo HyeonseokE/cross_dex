@@ -14,6 +14,7 @@ different environments (no package is added to either):
 
   cd DexLatent && python -m dexverse_lad.eval_space prep --pairs_sub <dexverse_val20k.npz> --side right --out <dir>   (PYTHONPATH=robot_clip)
   cd robot_clip && python -m dexverse_lad.eval_space decode --out <dir> --ckpt frozen=<lad_cam.pt> --ckpt ft=<lad_cam.pt>
+  cd DexLatent && python -m dexverse_lad.eval_space decode_xlvla --out <dir> --ckpt xlvla=<checkpoint_epoch_N.pt>   (optional, comparison)
   cd DexLatent && python -m dexverse_lad.eval_space metrics --out <dir>
 """
 import argparse, glob, json, os
@@ -88,6 +89,32 @@ def decode(a):
         print("decoded", name, path, flush=True)
 
 
+def decode_xlvla(a):
+    """Same output format as decode(), for an XL-VLA hand latent checkpoint (dexlatent env): comparison on the same inputs."""
+    from dexverse_xlvla.eval_latent import dec, enc, load_eval
+    I = np.load(f"{a.out}/inputs.npz", allow_pickle=True)
+    hands = [str(h) for h in I["hands"]]; names = json.loads(str(I["names"])); side = str(I["side"])
+    for spec in a.ckpt:
+        name, path = spec.split("=", 1)
+        tr = load_eval(path)
+        mn = {h: model_name(h, side) for h in hands}
+        assert all(mn[h] in tr.hand_names for h in hands), (tr.hand_names, hands)
+        M = {h: tr.hand_models[mn[h]] for h in hands}
+        idx = {h: M[h].data_index(names[h]) for h in hands}
+        out = {}
+        with torch.no_grad():
+            for kind in ("teleop", "pair"):
+                for s in hands:
+                    z = enc(tr, mn[s], M[s].angles_to_normalized(torch.tensor(I[f"{kind}_{s}"][:, idx[s]])).clamp(-1, 1))
+                    for t in hands:
+                        qn = dec(tr, mn[t], z).clamp(-1, 1)
+                        ang = ((qn + 1) * 0.5 * (M[t]._upper - M[t]._lower) + M[t]._lower).numpy()      # model order, rad
+                        q = np.zeros_like(ang); q[:, idx[t]] = ang                                         # -> LAD column order
+                        out[f"{kind}_{s}_to_{t}"] = q
+        np.savez(f"{a.out}/decoded_{name}.npz", ckpt=path, **out)
+        print("decoded", name, path, flush=True)
+
+
 def metrics(a):
     from dexverse_xlvla import hands as H
     from dexverse_xlvla.eval_latent import line_err
@@ -133,11 +160,11 @@ def metrics(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["prep", "decode", "metrics"])
+    ap.add_argument("step", choices=["prep", "decode", "decode_xlvla", "metrics"])
     ap.add_argument("--out", required=True)
     ap.add_argument("--pairs_sub", default="")
     ap.add_argument("--side", default="right")
     ap.add_argument("--n_teleop", type=int, default=30000)
     ap.add_argument("--ckpt", action="append", default=[])
     a = ap.parse_args()
-    {"prep": prep, "decode": decode, "metrics": metrics}[a.step](a)
+    {"prep": prep, "decode": decode, "decode_xlvla": decode_xlvla, "metrics": metrics}[a.step](a)
