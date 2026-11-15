@@ -39,6 +39,11 @@ def prep(a):
     out, info = {}, {}
     for h in hands:
         m = H.CanonicalHandModel(model_name(h, a.side))
+        if a.side == "left":                                        # pair files carry the right-hand joint names
+            try:
+                m.data_index(names[h])
+            except KeyError:
+                names[h] = [n.replace("right_", "left_") for n in names[h]]
         idx = m.data_index(names[h])                                # model dof d = LAD column idx[d]
         assert sorted(idx) == list(range(len(names[h]))), f"{h}: LAD joints and model DoF differ"
         pat = f"{TELEOP}/*/{h}_right/*_right/meta/info.json" if a.side == "right" else f"{TELEOP}/*/{h}_bimanual/*/meta/info.json"
@@ -49,15 +54,15 @@ def prep(a):
             q = np.zeros((len(act), len(idx)), np.float32)
             q[:, idx] = act[:, m.data_index(cols)]                  # teleop finger actions (rad) -> LAD column order
             qs.append(q); tasks.append(ds.split("/")[-3])
-        q = np.concatenate(qs)
+        q = np.concatenate(qs) if qs else np.zeros((0, len(idx)), np.float32)      # no teleop set of this hand: metrics 1 / 3 skip it
         lo, hi = m._lower.numpy(), m._upper.numpy()
-        inside = float(((q[:, idx] >= lo - 1e-3) & (q[:, idx] <= hi + 1e-3)).mean())
+        inside = float(((q[:, idx] >= lo - 1e-3) & (q[:, idx] <= hi + 1e-3)).mean()) if len(q) else float("nan")
         if len(q) > a.n_teleop:
             q = q[np.sort(rng.choice(len(q), a.n_teleop, replace=False))]
         out[f"teleop_{h}"] = q
         out[f"pair_{h}"] = P[f"{a.side}_{h}"].astype(np.float32)
         info[h] = {"teleop_frames": int(len(q)), "teleop_tasks": tasks, "teleop_frac_inside_limits": round(inside, 5),
-                   "teleop_joint_std_min": round(float(q.std(0).min()), 4), "pair_rows": int(len(out[f"pair_{h}"]))}
+                   "teleop_joint_std_min": round(float(q.std(0).min()), 4) if len(q) else None, "pair_rows": int(len(out[f"pair_{h}"]))}
         print(h, json.dumps(info[h]), flush=True)
     os.makedirs(a.out, exist_ok=True)
     np.savez(f"{a.out}/inputs.npz", hands=np.asarray(hands), names=json.dumps(names), side=a.side, info=json.dumps(info), **out)
@@ -145,12 +150,15 @@ def metrics(a):
                         out[s]["pair_self_joint_deg"], out[s]["pair_self_tip_mm"] = ej, et
                         continue
                     j.append(ej); tp.append(et)
+                    if not len(I[f"teleop_{s}"]):
+                        continue
                     k = min(M[s].tip_count(), M[t].tip_count())                                       # 3
                     d, l = line_err(ref["teleop"][s], tips(t, D[f"teleop_{s}_to_{t}"]), [(0, i) for i in range(1, k)])
                     dd.append(d); ll.append(l * 1e3)
                 out[s].update(m2_cross_joint_deg=float(np.mean(j)), m2_cross_tip_mm=float(np.mean(tp)),
-                              m3_teleop_line_dir_deg=float(np.mean(dd)), m3_teleop_line_len_mm=float(np.mean(ll)))
-            out["mean"] = {k: float(np.mean([out[h][k] for h in hands])) for k in out[hands[0]]}
+                              m3_teleop_line_dir_deg=float(np.mean(dd)) if dd else float("nan"),
+                              m3_teleop_line_len_mm=float(np.mean(ll)) if ll else float("nan"))
+            out["mean"] = {k: float(np.nanmean([out[h][k] for h in hands])) for k in out[hands[0]]}      # hands without teleop: nan, skipped
             out["_ckpt"] = str(D["ckpt"]); out["_data"] = json.loads(str(I["info"]))
             json.dump(out, open(f"{a.out}/space_{name}.json", "w"), indent=1)
             summary[name] = out["mean"]
