@@ -226,6 +226,13 @@ def show_goal_marker(env_cfg) -> None:
     """
     if _show_lift_height_marker(env_cfg):
         return
+    try:   # DexVerse dev >= 24dc573: one implementation, also called by replay / LeRobot rendering / policy evaluation
+        from dexverse.teleop_utils.debug_visualization import show_pour_goal_marker
+    except ImportError:
+        show_pour_goal_marker = None
+    if show_pour_goal_marker is not None:
+        show_pour_goal_marker(env_cfg)
+        return
     if not hasattr(env_cfg, "pour_show_progress_marker") or getattr(env_cfg.scene, "success_marker", None) is None:
         return
     if env_cfg.observations.scene_vis is not None and hasattr(env_cfg.observations.scene_vis, "pour_progress_marker_vis"):
