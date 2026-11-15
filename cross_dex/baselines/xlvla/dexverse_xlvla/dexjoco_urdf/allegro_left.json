@@ -1,0 +1,30 @@
+{
+ "hand": "allegro",
+ "side": "left",
+ "actuator_joints": [
+  "ffj0_left",
+  "ffj1_left",
+  "ffj2_left",
+  "ffj3_left",
+  "mfj0_left",
+  "mfj1_left",
+  "mfj2_left",
+  "mfj3_left",
+  "rfj0_left",
+  "rfj1_left",
+  "rfj2_left",
+  "rfj3_left",
+  "thj0_left",
+  "thj1_left",
+  "thj2_left",
+  "thj3_left"
+ ],
+ "tips": [
+  "rf_tip_left_tip",
+  "mf_tip_left_tip",
+  "ff_tip_left_tip",
+  "th_tip_left_tip"
+ ],
+ "mimic_joints": 0,
+ "source": "benchmark7_v3_bimanual_photograph_allegro.xml"
+}

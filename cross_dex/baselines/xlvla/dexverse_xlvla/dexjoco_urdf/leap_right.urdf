@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<robot name="dj_leap_right">
+  <link name="hand_root"/>
+  <link name="mcp_joint"/>
+  <joint name="1" type="revolute"><origin xyz="0.008722400 0.053057800 0.092904800" rpy="1.570796327 -0.000000003 0.000000000"/><parent link="hand_root"/><child link="mcp_joint"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.314000" upper="2.230000" effort="10" velocity="10"/></joint>
+  <link name="pip"/>
+  <joint name="0" type="revolute"><origin xyz="-0.012200000 0.038100000 0.014500000" rpy="-1.570796327 -0.000000000 1.570796327"/><parent link="mcp_joint"/><child link="pip"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-1.047000" upper="1.047000" effort="10" velocity="10"/></joint>
+  <link name="dip"/>
+  <joint name="2" type="revolute"><origin xyz="0.015000000 0.014300000 -0.013000000" rpy="1.570796327 -1.570796327 0.000000000"/><parent link="pip"/><child link="dip"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.506000" upper="1.885000" effort="10" velocity="10"/></joint>
+  <link name="fingertip"/>
+  <joint name="3" type="revolute"><origin xyz="-0.000000004 -0.036100000 0.000200000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="dip"/><child link="fingertip"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.366000" upper="2.042000" effort="10" velocity="10"/></joint>
+  <link name="mcp_joint_2"/>
+  <joint name="5" type="revolute"><origin xyz="0.008722400 0.007607760 0.092904800" rpy="1.570796327 -0.000000003 0.000000000"/><parent link="hand_root"/><child link="mcp_joint_2"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.314000" upper="2.230000" effort="10" velocity="10"/></joint>
+  <link name="pip_2"/>
+  <joint name="4" type="revolute"><origin xyz="-0.012200000 0.038100000 0.014500000" rpy="-1.570796327 -0.000000000 1.570796327"/><parent link="mcp_joint_2"/><child link="pip_2"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-1.047000" upper="1.047000" effort="10" velocity="10"/></joint>
+  <link name="dip_2"/>
+  <joint name="6" type="revolute"><origin xyz="0.015000000 0.014300000 -0.013000000" rpy="1.570796327 -1.570796327 0.000000000"/><parent link="pip_2"/><child link="dip_2"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.506000" upper="1.885000" effort="10" velocity="10"/></joint>
+  <link name="fingertip_2"/>
+  <joint name="7" type="revolute"><origin xyz="0.000000000 -0.036100000 0.000200000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="dip_2"/><child link="fingertip_2"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.366000" upper="2.042000" effort="10" velocity="10"/></joint>
+  <link name="mcp_joint_3"/>
+  <joint name="9" type="revolute"><origin xyz="0.008722410 -0.037842200 0.092904800" rpy="1.570796327 -0.000000003 0.000000000"/><parent link="hand_root"/><child link="mcp_joint_3"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.314000" upper="2.230000" effort="10" velocity="10"/></joint>
+  <link name="pip_3"/>
+  <joint name="8" type="revolute"><origin xyz="-0.012200000 0.038100000 0.014500000" rpy="-1.570796327 -0.000000000 1.570796327"/><parent link="mcp_joint_3"/><child link="pip_3"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-1.047000" upper="1.047000" effort="10" velocity="10"/></joint>
+  <link name="dip_3"/>
+  <joint name="10" type="revolute"><origin xyz="0.015000000 0.014300000 -0.013000000" rpy="1.570796327 -1.570796327 0.000000000"/><parent link="pip_3"/><child link="dip_3"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.506000" upper="1.885000" effort="10" velocity="10"/></joint>
+  <link name="fingertip_3"/>
+  <joint name="11" type="revolute"><origin xyz="0.000000000 -0.036100000 0.000200000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="dip_3"/><child link="fingertip_3"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.366000" upper="2.042000" effort="10" velocity="10"/></joint>
+  <link name="pip_4"/>
+  <joint name="12" type="revolute"><origin xyz="0.011622400 0.028757800 0.030604800" rpy="0.000000000 -0.000000003 0.000000000"/><parent link="hand_root"/><child link="pip_4"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.349000" upper="2.094000" effort="10" velocity="10"/></joint>
+  <link name="thumb_pip"/>
+  <joint name="13" type="revolute"><origin xyz="0.000000000 0.014300000 -0.013000000" rpy="1.570796327 -1.570796327 0.000000000"/><parent link="pip_4"/><child link="thumb_pip"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.470000" upper="2.443000" effort="10" velocity="10"/></joint>
+  <link name="thumb_dip"/>
+  <joint name="14" type="revolute"><origin xyz="0.000000000 0.014500000 -0.017000000" rpy="-1.570796327 0.000000000 0.000000000"/><parent link="thumb_pip"/><child link="thumb_dip"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-1.200000" upper="1.900000" effort="10" velocity="10"/></joint>
+  <link name="thumb_fingertip"/>
+  <joint name="15" type="revolute"><origin xyz="0.000000000 0.046600000 0.000200000" rpy="0.000000000 -0.000000000 3.141592654"/><parent link="thumb_dip"/><child link="thumb_fingertip"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-1.340000" upper="1.880000" effort="10" velocity="10"/></joint>
+  <link name="fingertip_tip"/>
+  <joint name="fingertip_tip_fixed" type="fixed"><origin xyz="-0.000000000 -0.052000000 0.015000000" rpy="0 0 0"/><parent link="fingertip"/><child link="fingertip_tip"/></joint>
+  <link name="fingertip_2_tip"/>
+  <joint name="fingertip_2_tip_fixed" type="fixed"><origin xyz="-0.000000000 -0.052000000 0.015000000" rpy="0 0 0"/><parent link="fingertip_2"/><child link="fingertip_2_tip"/></joint>
+  <link name="fingertip_3_tip"/>
+  <joint name="fingertip_3_tip_fixed" type="fixed"><origin xyz="-0.000000000 -0.052000000 0.015000000" rpy="0 0 0"/><parent link="fingertip_3"/><child link="fingertip_3_tip"/></joint>
+  <link name="thumb_fingertip_tip"/>
+  <joint name="thumb_fingertip_tip_fixed" type="fixed"><origin xyz="-0.000000000 -0.065000000 -0.015000000" rpy="0 0 0"/><parent link="thumb_fingertip"/><child link="thumb_fingertip_tip"/></joint>
+</robot>

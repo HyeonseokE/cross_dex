@@ -1,0 +1,21 @@
+{
+ "hand": "inspire",
+ "side": "right",
+ "actuator_joints": [
+  "inspire_thumb_proximal_yaw_joint",
+  "inspire_thumb_proximal_pitch_joint",
+  "inspire_index_proximal_joint",
+  "inspire_middle_proximal_joint",
+  "inspire_ring_proximal_joint",
+  "inspire_pinky_proximal_joint"
+ ],
+ "tips": [
+  "inspire_thumb_distal_tip",
+  "inspire_index_intermediate_tip",
+  "inspire_middle_intermediate_tip",
+  "inspire_ring_intermediate_tip",
+  "inspire_pinky_intermediate_tip"
+ ],
+ "mimic_joints": 12,
+ "source": "benchmark7_v3_bimanual_photograph_inspire.xml"
+}

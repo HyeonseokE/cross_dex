@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<robot name="dj_wuji_right">
+  <link name="hand_root"/>
+  <link name="wuji_CMC_joint"/>
+  <joint name="wuji_F1J1" type="revolute"><origin xyz="-0.078711900 0.020575400 0.038524400" rpy="-1.023412781 0.622187317 -1.291542346"/><parent link="hand_root"/><child link="wuji_CMC_joint"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.044800" upper="1.650800" effort="10" velocity="10"/></joint>
+  <link name="wuji_CMC_2rd"/>
+  <joint name="wuji_F1J2" type="revolute"><origin xyz="-0.014559800 0.003833590 -0.005765510" rpy="-0.091494247 -0.705740096 -0.493268637"/><parent link="wuji_CMC_joint"/><child link="wuji_CMC_2rd"/><axis xyz="0.000000000 -1.000000000 0.000000000"/><limit lower="-0.165900" upper="0.933900" effort="10" velocity="10"/></joint>
+  <link name="wuji_MCP_thumb"/>
+  <joint name="wuji_F1J3" type="revolute"><origin xyz="-0.030766000 -0.000055784 0.012586000" rpy="0.338189224 0.327650282 0.000070047"/><parent link="wuji_CMC_2rd"/><child link="wuji_MCP_thumb"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_IP_thumb"/>
+  <joint name="wuji_F1J4" type="revolute"><origin xyz="-0.028994700 0.000556724 -0.000250001" rpy="0.000000000 0.000000000 -0.019198613"/><parent link="wuji_MCP_thumb"/><child link="wuji_IP_thumb"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_MCP_joint_index"/>
+  <joint name="wuji_F2J1" type="revolute"><origin xyz="-0.141917000 0.029433900 0.024129900" rpy="-1.345839032 -0.045064839 -0.123595331"/><parent link="hand_root"/><child link="wuji_MCP_joint_index"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-1.635950" upper="0.000000" effort="10" velocity="10"/></joint>
+  <link name="wuji_PIPMCP_2rd_index"/>
+  <joint name="wuji_F2J2" type="revolute"><origin xyz="-0.004000010 -0.002200000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="wuji_MCP_joint_index"/><child link="wuji_PIPMCP_2rd_index"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.495000" upper="0.495000" effort="10" velocity="10"/></joint>
+  <link name="wuji_DIP_index"/>
+  <joint name="wuji_F2J3" type="revolute"><origin xyz="-0.036617700 0.004600000 0.000015581" rpy="0.000000000 0.000433200 0.000000000"/><parent link="wuji_PIPMCP_2rd_index"/><child link="wuji_DIP_index"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_tipmount_index"/>
+  <joint name="wuji_F2J4" type="revolute"><origin xyz="-0.029000000 0.000000000 0.000000000" rpy="0.000268594 -0.000000000 0.000000000"/><parent link="wuji_DIP_index"/><child link="wuji_tipmount_index"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_MCP_joint_middle"/>
+  <joint name="wuji_F3J1" type="revolute"><origin xyz="-0.139544000 0.007461460 0.019540300" rpy="-1.571378138 -0.087266737 0.000000347"/><parent link="hand_root"/><child link="wuji_MCP_joint_middle"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-1.635950" upper="0.000000" effort="10" velocity="10"/></joint>
+  <link name="wuji_PIPMCP_2rd_middle"/>
+  <joint name="wuji_F3J2" type="revolute"><origin xyz="-0.004000010 -0.002200000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="wuji_MCP_joint_middle"/><child link="wuji_PIPMCP_2rd_middle"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.495000" upper="0.495000" effort="10" velocity="10"/></joint>
+  <link name="wuji_DIP_middle"/>
+  <joint name="wuji_F3J3" type="revolute"><origin xyz="-0.036617700 0.004600000 0.000015581" rpy="0.000000000 0.000433200 0.000000000"/><parent link="wuji_PIPMCP_2rd_middle"/><child link="wuji_DIP_middle"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_tipmount_middle"/>
+  <joint name="wuji_F3J4" type="revolute"><origin xyz="-0.029000000 0.000000000 0.000000000" rpy="0.000268594 -0.000000000 0.000000000"/><parent link="wuji_DIP_middle"/><child link="wuji_tipmount_middle"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_MCP_joint_ring"/>
+  <joint name="wuji_F4J1" type="revolute"><origin xyz="-0.134429000 -0.013712000 0.022335100" rpy="-1.625422610 -0.078735800 0.094494814"/><parent link="hand_root"/><child link="wuji_MCP_joint_ring"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-1.635950" upper="0.000000" effort="10" velocity="10"/></joint>
+  <link name="wuji_PIPMCP_2rd_ring"/>
+  <joint name="wuji_F4J2" type="revolute"><origin xyz="-0.004000000 -0.002200000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="wuji_MCP_joint_ring"/><child link="wuji_PIPMCP_2rd_ring"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.495000" upper="0.495000" effort="10" velocity="10"/></joint>
+  <link name="wuji_DIP_ring"/>
+  <joint name="wuji_F4J3" type="revolute"><origin xyz="-0.036618000 0.004600000 0.000015581" rpy="0.000000000 0.000433200 0.000000000"/><parent link="wuji_PIPMCP_2rd_ring"/><child link="wuji_DIP_ring"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_tipmount_ring"/>
+  <joint name="wuji_F4J4" type="revolute"><origin xyz="-0.029000000 0.000000000 0.000000000" rpy="0.000268590 -0.000000000 0.000000000"/><parent link="wuji_DIP_ring"/><child link="wuji_tipmount_ring"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_MCP_joint_pinky"/>
+  <joint name="wuji_F5J1" type="revolute"><origin xyz="-0.124281000 -0.034001100 0.027731300" rpy="-1.743533516 -0.059552039 0.204955736"/><parent link="hand_root"/><child link="wuji_MCP_joint_pinky"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-1.635950" upper="0.000000" effort="10" velocity="10"/></joint>
+  <link name="wuji_PIPMCP_2rd_pinky"/>
+  <joint name="wuji_F5J2" type="revolute"><origin xyz="-0.004000010 -0.002200000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="wuji_MCP_joint_pinky"/><child link="wuji_PIPMCP_2rd_pinky"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.495000" upper="0.495000" effort="10" velocity="10"/></joint>
+  <link name="wuji_DIP_pinky"/>
+  <joint name="wuji_F5J3" type="revolute"><origin xyz="-0.036617700 0.004600000 0.000015581" rpy="0.000000000 0.000433202 0.000000000"/><parent link="wuji_PIPMCP_2rd_pinky"/><child link="wuji_DIP_pinky"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_tipmount_pinky"/>
+  <joint name="wuji_F5J4" type="revolute"><origin xyz="-0.029000000 0.000000000 0.000000000" rpy="0.000268594 -0.000000000 0.000000000"/><parent link="wuji_DIP_pinky"/><child link="wuji_tipmount_pinky"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.627200" effort="10" velocity="10"/></joint>
+  <link name="wuji_IP_thumb_tip"/>
+  <joint name="wuji_IP_thumb_tip_fixed" type="fixed"><origin xyz="-0.022687768 0.001338375 0.000251458" rpy="0 0 0"/><parent link="wuji_IP_thumb"/><child link="wuji_IP_thumb_tip"/></joint>
+  <link name="wuji_tipmount_index_tip"/>
+  <joint name="wuji_tipmount_index_tip_fixed" type="fixed"><origin xyz="-0.016825091 0.001292817 -0.000004362" rpy="0 0 0"/><parent link="wuji_tipmount_index"/><child link="wuji_tipmount_index_tip"/></joint>
+  <link name="wuji_tipmount_middle_tip"/>
+  <joint name="wuji_tipmount_middle_tip_fixed" type="fixed"><origin xyz="-0.016825091 0.001292818 -0.000004362" rpy="0 0 0"/><parent link="wuji_tipmount_middle"/><child link="wuji_tipmount_middle_tip"/></joint>
+  <link name="wuji_tipmount_ring_tip"/>
+  <joint name="wuji_tipmount_ring_tip_fixed" type="fixed"><origin xyz="-0.016825091 0.001292784 0.000002188" rpy="0 0 0"/><parent link="wuji_tipmount_ring"/><child link="wuji_tipmount_ring_tip"/></joint>
+  <link name="wuji_tipmount_pinky_tip"/>
+  <joint name="wuji_tipmount_pinky_tip_fixed" type="fixed"><origin xyz="-0.016825091 0.001292818 -0.000004362" rpy="0 0 0"/><parent link="wuji_tipmount_pinky"/><child link="wuji_tipmount_pinky_tip"/></joint>
+</robot>

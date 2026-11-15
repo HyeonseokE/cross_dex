@@ -1,0 +1,37 @@
+{
+ "hand": "sharpa_wave",
+ "side": "right",
+ "actuator_joints": [
+  "right_thumb_CMC_FE",
+  "right_thumb_CMC_AA",
+  "right_thumb_MCP_FE",
+  "right_thumb_MCP_AA",
+  "right_thumb_IP",
+  "right_index_MCP_FE",
+  "right_index_MCP_AA",
+  "right_index_PIP",
+  "right_index_DIP",
+  "right_middle_MCP_FE",
+  "right_middle_MCP_AA",
+  "right_middle_PIP",
+  "right_middle_DIP",
+  "right_ring_MCP_FE",
+  "right_ring_MCP_AA",
+  "right_ring_PIP",
+  "right_ring_DIP",
+  "right_pinky_CMC",
+  "right_pinky_MCP_FE",
+  "right_pinky_MCP_AA",
+  "right_pinky_PIP",
+  "right_pinky_DIP"
+ ],
+ "tips": [
+  "right_thumb_DP_tip",
+  "right_index_DP_tip",
+  "right_middle_DP_tip",
+  "right_ring_DP_tip",
+  "right_pinky_DP_tip"
+ ],
+ "mimic_joints": 0,
+ "source": "benchmark7_v3_bimanual_photograph_sharpa_wave.xml"
+}

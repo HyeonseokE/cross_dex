@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<robot name="dj_sharpa_wave_right">
+  <link name="hand_root"/>
+  <link name="right_thumb_CMC_VL"/>
+  <joint name="right_thumb_CMC_FE" type="revolute"><origin xyz="0.010000000 0.026000000 0.050900000" rpy="-3.141585307 -0.000000000 1.570800569"/><parent link="hand_root"/><child link="right_thumb_CMC_VL"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.174500" upper="1.919900" effort="10" velocity="10"/></joint>
+  <link name="right_thumb_MC"/>
+  <joint name="right_thumb_CMC_AA" type="revolute"><origin xyz="0.000000000 -0.005000000 0.000000000" rpy="-1.570799257 0.785399861 0.000000317"/><parent link="right_thumb_CMC_VL"/><child link="right_thumb_MC"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.349100" upper="0.349100" effort="10" velocity="10"/></joint>
+  <link name="right_thumb_MCP_VL"/>
+  <joint name="right_thumb_MCP_FE" type="revolute"><origin xyz="0.065000000 -0.006000000 0.010392000" rpy="0.523600530 -0.000000000 0.000000000"/><parent link="right_thumb_MC"/><child link="right_thumb_MCP_VL"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.523600" upper="1.396300" effort="10" velocity="10"/></joint>
+  <link name="right_thumb_PP"/>
+  <joint name="right_thumb_MCP_AA" type="revolute"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="-1.570800569 0.000000000 0.000000000"/><parent link="right_thumb_MCP_VL"/><child link="right_thumb_PP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.349100" upper="0.349100" effort="10" velocity="10"/></joint>
+  <link name="right_thumb_DP"/>
+  <joint name="right_thumb_IP" type="revolute"><origin xyz="0.039000000 0.000000000 0.000000000" rpy="1.570800569 -0.000000000 0.000000000"/><parent link="right_thumb_PP"/><child link="right_thumb_DP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.745300" effort="10" velocity="10"/></joint>
+  <link name="right_index_MCP_VL"/>
+  <joint name="right_index_MCP_FE" type="revolute"><origin xyz="0.001000000 0.030300000 0.125400000" rpy="-1.570800327 -1.570796327 0.000000000"/><parent link="hand_root"/><child link="right_index_MCP_VL"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.174533" upper="1.570800" effort="10" velocity="10"/></joint>
+  <link name="right_index_PP"/>
+  <joint name="right_index_MCP_AA" type="revolute"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="-1.570800569 0.000000000 0.000000000"/><parent link="right_index_MCP_VL"/><child link="right_index_PP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.349100" upper="0.349100" effort="10" velocity="10"/></joint>
+  <link name="right_index_MP"/>
+  <joint name="right_index_PIP" type="revolute"><origin xyz="0.047000000 0.000000000 0.000000000" rpy="1.570800569 -0.000000000 0.000000000"/><parent link="right_index_PP"/><child link="right_index_MP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.745300" effort="10" velocity="10"/></joint>
+  <link name="right_index_DP"/>
+  <joint name="right_index_DIP" type="revolute"><origin xyz="0.031500000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="right_index_MP"/><child link="right_index_DP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.396300" effort="10" velocity="10"/></joint>
+  <link name="right_middle_MCP_VL"/>
+  <joint name="right_middle_MCP_FE" type="revolute"><origin xyz="0.000000000 0.010000000 0.128400000" rpy="-1.570800327 -1.570796327 0.000000000"/><parent link="hand_root"/><child link="right_middle_MCP_VL"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.174533" upper="1.570800" effort="10" velocity="10"/></joint>
+  <link name="right_middle_PP"/>
+  <joint name="right_middle_MCP_AA" type="revolute"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="-1.570800569 0.000000000 0.000000000"/><parent link="right_middle_MCP_VL"/><child link="right_middle_PP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.349100" upper="0.349100" effort="10" velocity="10"/></joint>
+  <link name="right_middle_MP"/>
+  <joint name="right_middle_PIP" type="revolute"><origin xyz="0.047000000 0.000000000 0.000000000" rpy="1.570800569 -0.000000000 0.000000000"/><parent link="right_middle_PP"/><child link="right_middle_MP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.745300" effort="10" velocity="10"/></joint>
+  <link name="right_middle_DP"/>
+  <joint name="right_middle_DIP" type="revolute"><origin xyz="0.031500000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="right_middle_MP"/><child link="right_middle_DP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.396300" effort="10" velocity="10"/></joint>
+  <link name="right_ring_MCP_VL"/>
+  <joint name="right_ring_MCP_FE" type="revolute"><origin xyz="0.001500000 -0.010300000 0.122400000" rpy="-1.570800327 -1.570796327 0.000000000"/><parent link="hand_root"/><child link="right_ring_MCP_VL"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.174533" upper="1.570800" effort="10" velocity="10"/></joint>
+  <link name="right_ring_PP"/>
+  <joint name="right_ring_MCP_AA" type="revolute"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="-1.570800569 0.000000000 0.000000000"/><parent link="right_ring_MCP_VL"/><child link="right_ring_PP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.349100" upper="0.349100" effort="10" velocity="10"/></joint>
+  <link name="right_ring_MP"/>
+  <joint name="right_ring_PIP" type="revolute"><origin xyz="0.047000000 0.000000000 0.000000000" rpy="1.570800569 -0.000000000 0.000000000"/><parent link="right_ring_PP"/><child link="right_ring_MP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.745300" effort="10" velocity="10"/></joint>
+  <link name="right_ring_DP"/>
+  <joint name="right_ring_DIP" type="revolute"><origin xyz="0.031500000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="right_ring_MP"/><child link="right_ring_DP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.396300" effort="10" velocity="10"/></joint>
+  <link name="right_pinky_MC"/>
+  <joint name="right_pinky_CMC" type="revolute"><origin xyz="0.011360000 -0.026300000 0.116400000" rpy="0.000000000 -0.000000000 -3.141585307"/><parent link="hand_root"/><child link="right_pinky_MC"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="0.261800" effort="10" velocity="10"/></joint>
+  <link name="right_pinky_MCP_VL"/>
+  <joint name="right_pinky_MCP_FE" type="revolute"><origin xyz="0.008360000 0.004800000 0.000000000" rpy="1.570800327 -1.570796327 0.000000000"/><parent link="right_pinky_MC"/><child link="right_pinky_MCP_VL"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.174533" upper="1.570800" effort="10" velocity="10"/></joint>
+  <link name="right_pinky_PP"/>
+  <joint name="right_pinky_MCP_AA" type="revolute"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="-1.570800569 0.000000000 0.000000000"/><parent link="right_pinky_MCP_VL"/><child link="right_pinky_PP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.349100" upper="0.349100" effort="10" velocity="10"/></joint>
+  <link name="right_pinky_MP"/>
+  <joint name="right_pinky_PIP" type="revolute"><origin xyz="0.047000000 0.000000000 0.000000000" rpy="1.570800569 -0.000000000 0.000000000"/><parent link="right_pinky_PP"/><child link="right_pinky_MP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.745300" effort="10" velocity="10"/></joint>
+  <link name="right_pinky_DP"/>
+  <joint name="right_pinky_DIP" type="revolute"><origin xyz="0.031500000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="right_pinky_MP"/><child link="right_pinky_DP"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.396300" effort="10" velocity="10"/></joint>
+  <link name="right_thumb_DP_tip"/>
+  <joint name="right_thumb_DP_tip_fixed" type="fixed"><origin xyz="0.022091711 0.000572491 -0.000001872" rpy="0 0 0"/><parent link="right_thumb_DP"/><child link="right_thumb_DP_tip"/></joint>
+  <link name="right_index_DP_tip"/>
+  <joint name="right_index_DP_tip_fixed" type="fixed"><origin xyz="0.018261077 0.001737978 -0.000000218" rpy="0 0 0"/><parent link="right_index_DP"/><child link="right_index_DP_tip"/></joint>
+  <link name="right_middle_DP_tip"/>
+  <joint name="right_middle_DP_tip_fixed" type="fixed"><origin xyz="0.018261084 0.001737905 -0.000000291" rpy="0 0 0"/><parent link="right_middle_DP"/><child link="right_middle_DP_tip"/></joint>
+  <link name="right_ring_DP_tip"/>
+  <joint name="right_ring_DP_tip_fixed" type="fixed"><origin xyz="0.018261077 0.001737978 -0.000000218" rpy="0 0 0"/><parent link="right_ring_DP"/><child link="right_ring_DP_tip"/></joint>
+  <link name="right_pinky_DP_tip"/>
+  <joint name="right_pinky_DP_tip_fixed" type="fixed"><origin xyz="0.018261077 0.001737978 -0.000000218" rpy="0 0 0"/><parent link="right_pinky_DP"/><child link="right_pinky_DP_tip"/></joint>
+</robot>

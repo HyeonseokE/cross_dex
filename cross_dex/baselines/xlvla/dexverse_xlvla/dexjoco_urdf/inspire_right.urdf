@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<robot name="dj_inspire_right">
+  <link name="hand_root"/>
+  <link name="inspire_thumb_proximal_base"/>
+  <joint name="inspire_thumb_proximal_yaw_joint" type="revolute"><origin xyz="-0.089099900 0.020450400 0.046960100" rpy="1.570800327 -0.000002000 -1.570802327"/><parent link="hand_root"/><child link="inspire_thumb_proximal_base"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="0.000000" upper="1.308000" effort="10" velocity="10"/></joint>
+  <link name="inspire_thumb_proximal"/>
+  <joint name="inspire_thumb_proximal_pitch_joint" type="revolute"><origin xyz="-0.008809900 0.010892000 -0.009250000" rpy="1.570799207 -0.000000161 2.858699944"/><parent link="inspire_thumb_proximal_base"/><child link="inspire_thumb_proximal"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="0.600000" effort="10" velocity="10"/></joint>
+  <link name="inspire_thumb_intermediate"/>
+  <joint name="inspire_thumb_intermediate_joint" type="revolute"><origin xyz="0.044070000 0.034553000 -0.000800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="inspire_thumb_proximal"/><child link="inspire_thumb_intermediate"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="0.800000" effort="10" velocity="10"/><mimic joint="inspire_thumb_proximal_pitch_joint" multiplier="1.334000" offset="0.000000"/></joint>
+  <link name="inspire_thumb_distal"/>
+  <joint name="inspire_thumb_distal_joint" type="revolute"><origin xyz="0.020248000 0.010156000 -0.001200000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="inspire_thumb_intermediate"/><child link="inspire_thumb_distal"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="0.400000" effort="10" velocity="10"/><mimic joint="inspire_thumb_proximal_pitch_joint" multiplier="0.667000" offset="0.000000"/></joint>
+  <link name="inspire_index_proximal"/>
+  <joint name="inspire_index_proximal_joint" type="revolute"><origin xyz="-0.156530000 0.032268900 0.029714800" rpy="-1.535896564 1.570796327 0.000000000"/><parent link="hand_root"/><child link="inspire_index_proximal"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.470000" effort="10" velocity="10"/></joint>
+  <link name="inspire_index_intermediate"/>
+  <joint name="inspire_index_intermediate_joint" type="revolute"><origin xyz="-0.002613800 0.032026000 -0.001000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="inspire_index_proximal"/><child link="inspire_index_intermediate"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.045450" upper="1.560000" effort="10" velocity="10"/><mimic joint="inspire_index_proximal_joint" multiplier="1.063990" offset="-0.045450"/></joint>
+  <link name="inspire_middle_proximal"/>
+  <joint name="inspire_middle_proximal_joint" type="revolute"><origin xyz="-0.157100000 0.012950900 0.029714700" rpy="-1.570798327 1.570796327 0.000000000"/><parent link="hand_root"/><child link="inspire_middle_proximal"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.470000" effort="10" velocity="10"/></joint>
+  <link name="inspire_middle_intermediate"/>
+  <joint name="inspire_middle_intermediate_joint" type="revolute"><origin xyz="-0.002422900 0.032041000 -0.001000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="inspire_middle_proximal"/><child link="inspire_middle_intermediate"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.045450" upper="1.560000" effort="10" velocity="10"/><mimic joint="inspire_middle_proximal_joint" multiplier="1.063990" offset="-0.045450"/></joint>
+  <link name="inspire_ring_proximal"/>
+  <joint name="inspire_ring_proximal_joint" type="revolute"><origin xyz="-0.156910000 -0.006286330 0.029714700" rpy="-1.623182316 1.570796327 0.000000000"/><parent link="hand_root"/><child link="inspire_ring_proximal"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.470000" effort="10" velocity="10"/></joint>
+  <link name="inspire_ring_intermediate"/>
+  <joint name="inspire_ring_intermediate_joint" type="revolute"><origin xyz="-0.002422900 0.032041000 -0.001000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="inspire_ring_proximal"/><child link="inspire_ring_intermediate"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.045450" upper="1.560000" effort="10" velocity="10"/><mimic joint="inspire_ring_proximal_joint" multiplier="1.063990" offset="-0.045450"/></joint>
+  <link name="inspire_pinky_proximal"/>
+  <joint name="inspire_pinky_proximal_joint" type="revolute"><origin xyz="-0.155710000 -0.025487100 0.029714600" rpy="-1.675483114 1.570796327 0.000000000"/><parent link="hand_root"/><child link="inspire_pinky_proximal"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.470000" effort="10" velocity="10"/></joint>
+  <link name="inspire_pinky_intermediate"/>
+  <joint name="inspire_pinky_intermediate_joint" type="revolute"><origin xyz="-0.002422900 0.032041000 -0.001000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="inspire_pinky_proximal"/><child link="inspire_pinky_intermediate"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.045450" upper="1.560000" effort="10" velocity="10"/><mimic joint="inspire_pinky_proximal_joint" multiplier="1.063990" offset="-0.045450"/></joint>
+  <link name="inspire_thumb_distal_tip"/>
+  <joint name="inspire_thumb_distal_tip_fixed" type="fixed"><origin xyz="0.010703803 0.005529777 -0.006085524" rpy="0 0 0"/><parent link="inspire_thumb_distal"/><child link="inspire_thumb_distal_tip"/></joint>
+  <link name="inspire_index_intermediate_tip"/>
+  <joint name="inspire_index_intermediate_tip_fixed" type="fixed"><origin xyz="0.000591064 0.030926006 -0.004999996" rpy="0 0 0"/><parent link="inspire_index_intermediate"/><child link="inspire_index_intermediate_tip"/></joint>
+  <link name="inspire_middle_intermediate_tip"/>
+  <joint name="inspire_middle_intermediate_tip_fixed" type="fixed"><origin xyz="-0.000690396 0.029290038 -0.005047604" rpy="0 0 0"/><parent link="inspire_middle_intermediate"/><child link="inspire_middle_intermediate_tip"/></joint>
+  <link name="inspire_ring_intermediate_tip"/>
+  <joint name="inspire_ring_intermediate_tip_fixed" type="fixed"><origin xyz="0.000591064 0.030926006 -0.004999996" rpy="0 0 0"/><parent link="inspire_ring_intermediate"/><child link="inspire_ring_intermediate_tip"/></joint>
+  <link name="inspire_pinky_intermediate_tip"/>
+  <joint name="inspire_pinky_intermediate_tip_fixed" type="fixed"><origin xyz="0.000963389 0.022946995 -0.004838287" rpy="0 0 0"/><parent link="inspire_pinky_intermediate"/><child link="inspire_pinky_intermediate_tip"/></joint>
+</robot>

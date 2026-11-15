@@ -1,0 +1,35 @@
+{
+ "hand": "wuji",
+ "side": "right",
+ "actuator_joints": [
+  "wuji_F1J1",
+  "wuji_F1J2",
+  "wuji_F1J3",
+  "wuji_F1J4",
+  "wuji_F2J1",
+  "wuji_F2J2",
+  "wuji_F2J3",
+  "wuji_F2J4",
+  "wuji_F3J1",
+  "wuji_F3J2",
+  "wuji_F3J3",
+  "wuji_F3J4",
+  "wuji_F4J1",
+  "wuji_F4J2",
+  "wuji_F4J3",
+  "wuji_F4J4",
+  "wuji_F5J1",
+  "wuji_F5J2",
+  "wuji_F5J3",
+  "wuji_F5J4"
+ ],
+ "tips": [
+  "wuji_IP_thumb_tip",
+  "wuji_tipmount_index_tip",
+  "wuji_tipmount_middle_tip",
+  "wuji_tipmount_ring_tip",
+  "wuji_tipmount_pinky_tip"
+ ],
+ "mimic_joints": 0,
+ "source": "benchmark7_v3_bimanual_photograph_wuji.xml"
+}

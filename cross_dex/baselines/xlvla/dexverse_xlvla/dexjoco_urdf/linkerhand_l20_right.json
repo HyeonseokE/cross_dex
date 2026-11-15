@@ -1,0 +1,31 @@
+{
+ "hand": "linkerhand_l20",
+ "side": "right",
+ "actuator_joints": [
+  "l20_thumb_cmc_roll",
+  "l20_thumb_cmc_yaw",
+  "l20_thumb_cmc_pitch",
+  "l20_thumb_mcp",
+  "l20_index_mcp_roll",
+  "l20_index_mcp_pitch",
+  "l20_index_pip",
+  "l20_middle_mcp_roll",
+  "l20_middle_mcp_pitch",
+  "l20_middle_pip",
+  "l20_ring_mcp_roll",
+  "l20_ring_mcp_pitch",
+  "l20_ring_pip",
+  "l20_pinky_mcp_roll",
+  "l20_pinky_mcp_pitch",
+  "l20_pinky_pip"
+ ],
+ "tips": [
+  "l20_thumb_distal_tip",
+  "l20_index_distal_tip",
+  "l20_middle_distal_tip",
+  "l20_ring_distal_tip",
+  "l20_pinky_distal_tip"
+ ],
+ "mimic_joints": 10,
+ "source": "benchmark7_v3_bimanual_photograph_linkerhand_l20.xml"
+}

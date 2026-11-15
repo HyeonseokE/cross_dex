@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<robot name="dj_linkerhand_l20_left">
+  <link name="hand_root"/>
+  <link name="l20_thumb_metacarpals_base1"/>
+  <joint name="l20_thumb_cmc_roll" type="revolute"><origin xyz="0.019160000 -0.010000000 0.043600000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="l20_thumb_metacarpals_base1"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="0.000000" upper="1.400000" effort="10" velocity="10"/></joint>
+  <link name="l20_thumb_metacarpals_base2"/>
+  <joint name="l20_thumb_cmc_yaw" type="revolute"><origin xyz="0.019845000 0.000000000 0.000000000" rpy="0.771650920 -0.000000000 0.000000000"/><parent link="l20_thumb_metacarpals_base1"/><child link="l20_thumb_metacarpals_base2"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="0.000000" upper="1.570000" effort="10" velocity="10"/></joint>
+  <link name="l20_thumb_metacarpals"/>
+  <joint name="l20_thumb_cmc_pitch" type="revolute"><origin xyz="0.008821800 -0.024245000 0.000500000" rpy="0.000002128 -1.064699918 1.919897586"/><parent link="l20_thumb_metacarpals_base2"/><child link="l20_thumb_metacarpals"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="0.840000" effort="10" velocity="10"/></joint>
+  <link name="l20_thumb_proximal"/>
+  <joint name="l20_thumb_mcp" type="revolute"><origin xyz="0.012701800 0.000000000 0.062725600" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_thumb_metacarpals"/><child link="l20_thumb_proximal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.260000" effort="10" velocity="10"/></joint>
+  <link name="l20_thumb_distal"/>
+  <joint name="l20_thumb_ip" type="revolute"><origin xyz="-0.004836520 0.000000000 0.034222600" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_thumb_proximal"/><child link="l20_thumb_distal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.290000" effort="10" velocity="10"/><mimic joint="l20_thumb_mcp" multiplier="1.020000" offset="0.000000"/></joint>
+  <link name="l20_index_metacarpals"/>
+  <joint name="l20_index_mcp_roll" type="revolute"><origin xyz="0.003800000 -0.035250000 0.148100000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="l20_index_metacarpals"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="-0.230000" upper="0.230000" effort="10" velocity="10"/></joint>
+  <link name="l20_index_proximal"/>
+  <joint name="l20_index_mcp_pitch" type="revolute"><origin xyz="-0.002130200 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_index_metacarpals"/><child link="l20_index_proximal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.220000" effort="10" velocity="10"/></joint>
+  <link name="l20_index_middle"/>
+  <joint name="l20_index_pip" type="revolute"><origin xyz="-0.004194600 0.000000000 0.044819000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_index_proximal"/><child link="l20_index_middle"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.740000" effort="10" velocity="10"/></joint>
+  <link name="l20_index_distal"/>
+  <joint name="l20_index_dip" type="revolute"><origin xyz="0.002824500 0.000000000 0.031696000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_index_middle"/><child link="l20_index_distal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.550000" effort="10" velocity="10"/><mimic joint="l20_index_pip" multiplier="0.890000" offset="0.000000"/></joint>
+  <link name="l20_middle_metacarpals"/>
+  <joint name="l20_middle_mcp_roll" type="revolute"><origin xyz="0.003800000 -0.011750000 0.152600000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="l20_middle_metacarpals"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="-0.230000" upper="0.230000" effort="10" velocity="10"/></joint>
+  <link name="l20_middle_proximal"/>
+  <joint name="l20_middle_mcp_pitch" type="revolute"><origin xyz="-0.002130200 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_middle_metacarpals"/><child link="l20_middle_proximal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.220000" effort="10" velocity="10"/></joint>
+  <link name="l20_middle_middle"/>
+  <joint name="l20_middle_pip" type="revolute"><origin xyz="-0.004194580 0.000000000 0.044819400" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_middle_proximal"/><child link="l20_middle_middle"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.740000" effort="10" velocity="10"/></joint>
+  <link name="l20_middle_distal"/>
+  <joint name="l20_middle_dip" type="revolute"><origin xyz="0.002824500 0.000000000 0.031696000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_middle_middle"/><child link="l20_middle_distal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.550000" effort="10" velocity="10"/><mimic joint="l20_middle_pip" multiplier="0.890000" offset="0.000000"/></joint>
+  <link name="l20_ring_metacarpals"/>
+  <joint name="l20_ring_mcp_roll" type="revolute"><origin xyz="0.003800000 0.011750000 0.148100000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="l20_ring_metacarpals"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="-0.230000" upper="0.230000" effort="10" velocity="10"/></joint>
+  <link name="l20_ring_proximal"/>
+  <joint name="l20_ring_mcp_pitch" type="revolute"><origin xyz="-0.002130200 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_ring_metacarpals"/><child link="l20_ring_proximal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.220000" effort="10" velocity="10"/></joint>
+  <link name="l20_ring_middle"/>
+  <joint name="l20_ring_pip" type="revolute"><origin xyz="-0.004194580 0.000000000 0.044819400" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_ring_proximal"/><child link="l20_ring_middle"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.740000" effort="10" velocity="10"/></joint>
+  <link name="l20_ring_distal"/>
+  <joint name="l20_ring_dip" type="revolute"><origin xyz="0.002824500 0.000000000 0.031696000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_ring_middle"/><child link="l20_ring_distal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.550000" effort="10" velocity="10"/><mimic joint="l20_ring_pip" multiplier="0.890000" offset="0.000000"/></joint>
+  <link name="l20_pinky_metacarpals"/>
+  <joint name="l20_pinky_mcp_roll" type="revolute"><origin xyz="0.003800000 0.035250000 0.143600000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="l20_pinky_metacarpals"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="-0.230000" upper="0.230000" effort="10" velocity="10"/></joint>
+  <link name="l20_pinky_proximal"/>
+  <joint name="l20_pinky_mcp_pitch" type="revolute"><origin xyz="-0.002130200 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_pinky_metacarpals"/><child link="l20_pinky_proximal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.220000" effort="10" velocity="10"/></joint>
+  <link name="l20_pinky_middle"/>
+  <joint name="l20_pinky_pip" type="revolute"><origin xyz="-0.004194600 0.000000000 0.044819000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_pinky_proximal"/><child link="l20_pinky_middle"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.740000" effort="10" velocity="10"/></joint>
+  <link name="l20_pinky_distal"/>
+  <joint name="l20_pinky_dip" type="revolute"><origin xyz="0.002824500 0.000000000 0.031696000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="l20_pinky_middle"/><child link="l20_pinky_distal"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.550000" effort="10" velocity="10"/><mimic joint="l20_pinky_pip" multiplier="0.890000" offset="0.000000"/></joint>
+  <link name="l20_thumb_distal_tip"/>
+  <joint name="l20_thumb_distal_tip_fixed" type="fixed"><origin xyz="-0.001162929 -0.000004958 0.013657147" rpy="0 0 0"/><parent link="l20_thumb_distal"/><child link="l20_thumb_distal_tip"/></joint>
+  <link name="l20_index_distal_tip"/>
+  <joint name="l20_index_distal_tip_fixed" type="fixed"><origin xyz="-0.008288024 0.000008346 0.008666701" rpy="0 0 0"/><parent link="l20_index_distal"/><child link="l20_index_distal_tip"/></joint>
+  <link name="l20_middle_distal_tip"/>
+  <joint name="l20_middle_distal_tip_fixed" type="fixed"><origin xyz="-0.008288024 0.000008346 0.008666701" rpy="0 0 0"/><parent link="l20_middle_distal"/><child link="l20_middle_distal_tip"/></joint>
+  <link name="l20_ring_distal_tip"/>
+  <joint name="l20_ring_distal_tip_fixed" type="fixed"><origin xyz="-0.008288024 0.000008346 0.008666701" rpy="0 0 0"/><parent link="l20_ring_distal"/><child link="l20_ring_distal_tip"/></joint>
+  <link name="l20_pinky_distal_tip"/>
+  <joint name="l20_pinky_distal_tip_fixed" type="fixed"><origin xyz="-0.008288024 0.000008346 0.008666701" rpy="0 0 0"/><parent link="l20_pinky_distal"/><child link="l20_pinky_distal_tip"/></joint>
+</robot>

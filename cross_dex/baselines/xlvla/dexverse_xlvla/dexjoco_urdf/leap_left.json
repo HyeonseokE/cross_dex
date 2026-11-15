@@ -1,0 +1,30 @@
+{
+ "hand": "leap",
+ "side": "left",
+ "actuator_joints": [
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "11",
+  "12",
+  "13",
+  "14",
+  "15"
+ ],
+ "tips": [
+  "fingertip_3_tip",
+  "fingertip_2_tip",
+  "fingertip_tip",
+  "thumb_fingertip_tip"
+ ],
+ "mimic_joints": 0,
+ "source": "benchmark7_v3_bimanual_photograph_leap.xml"
+}

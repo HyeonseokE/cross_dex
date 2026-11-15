@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot name="dj_allegro_left">
+  <link name="hand_root"/>
+  <link name="rf_base_left"/>
+  <joint name="rfj0_left" type="revolute"><origin xyz="0.000000000 0.043500000 -0.001542000" rpy="-0.087266507 0.000000000 0.000000000"/><parent link="hand_root"/><child link="rf_base_left"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.470000" upper="0.470000" effort="10" velocity="10"/></joint>
+  <link name="rf_proximal_left"/>
+  <joint name="rfj1_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.016400000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="rf_base_left"/><child link="rf_proximal_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.196000" upper="1.610000" effort="10" velocity="10"/></joint>
+  <link name="rf_medial_left"/>
+  <joint name="rfj2_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.054000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="rf_proximal_left"/><child link="rf_medial_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.174000" upper="1.709000" effort="10" velocity="10"/></joint>
+  <link name="rf_distal_left"/>
+  <joint name="rfj3_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.038400000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="rf_medial_left"/><child link="rf_distal_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.227000" upper="1.618000" effort="10" velocity="10"/></joint>
+  <link name="rf_tip_left"/>
+  <joint name="rf_tip_left_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="rf_distal_left"/><child link="rf_tip_left"/></joint>
+  <link name="mf_base_left"/>
+  <joint name="mfj0_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.000700000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="mf_base_left"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.470000" upper="0.470000" effort="10" velocity="10"/></joint>
+  <link name="mf_proximal_left"/>
+  <joint name="mfj1_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.016400000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="mf_base_left"/><child link="mf_proximal_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.196000" upper="1.610000" effort="10" velocity="10"/></joint>
+  <link name="mf_medial_left"/>
+  <joint name="mfj2_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.054000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="mf_proximal_left"/><child link="mf_medial_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.174000" upper="1.709000" effort="10" velocity="10"/></joint>
+  <link name="mf_distal_left"/>
+  <joint name="mfj3_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.038400000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="mf_medial_left"/><child link="mf_distal_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.227000" upper="1.618000" effort="10" velocity="10"/></joint>
+  <link name="mf_tip_left"/>
+  <joint name="mf_tip_left_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="mf_distal_left"/><child link="mf_tip_left"/></joint>
+  <link name="ff_base_left"/>
+  <joint name="ffj0_left" type="revolute"><origin xyz="0.000000000 -0.043500000 -0.001542000" rpy="0.087266507 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="ff_base_left"/><axis xyz="0.000000000 0.000000000 1.000000000"/><limit lower="-0.470000" upper="0.470000" effort="10" velocity="10"/></joint>
+  <link name="ff_proximal_left"/>
+  <joint name="ffj1_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.016400000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="ff_base_left"/><child link="ff_proximal_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.196000" upper="1.610000" effort="10" velocity="10"/></joint>
+  <link name="ff_medial_left"/>
+  <joint name="ffj2_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.054000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="ff_proximal_left"/><child link="ff_medial_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.174000" upper="1.709000" effort="10" velocity="10"/></joint>
+  <link name="ff_distal_left"/>
+  <joint name="ffj3_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.038400000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="ff_medial_left"/><child link="ff_distal_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.227000" upper="1.618000" effort="10" velocity="10"/></joint>
+  <link name="ff_tip_left"/>
+  <joint name="ff_tip_left_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="ff_distal_left"/><child link="ff_tip_left"/></joint>
+  <link name="th_base_left"/>
+  <joint name="thj0_left" type="revolute"><origin xyz="-0.018200000 -0.019333000 -0.045987000" rpy="3.141592654 -1.483528621 -1.570796327"/><parent link="hand_root"/><child link="th_base_left"/><axis xyz="1.000000000 0.000000000 0.000000000"/><limit lower="0.263000" upper="1.396000" effort="10" velocity="10"/></joint>
+  <link name="th_proximal_left"/>
+  <joint name="thj1_left" type="revolute"><origin xyz="-0.027000000 -0.005000000 0.039900000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="th_base_left"/><child link="th_proximal_left"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="-0.105000" upper="1.163000" effort="10" velocity="10"/></joint>
+  <link name="th_medial_left"/>
+  <joint name="thj2_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.017700000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="th_proximal_left"/><child link="th_medial_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.189000" upper="1.644000" effort="10" velocity="10"/></joint>
+  <link name="th_distal_left"/>
+  <joint name="thj3_left" type="revolute"><origin xyz="0.000000000 0.000000000 0.051400000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="th_medial_left"/><child link="th_distal_left"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.162000" upper="1.719000" effort="10" velocity="10"/></joint>
+  <link name="th_tip_left"/>
+  <joint name="th_tip_left_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="th_distal_left"/><child link="th_tip_left"/></joint>
+  <link name="rf_tip_left_tip"/>
+  <joint name="rf_tip_left_tip_fixed" type="fixed"><origin xyz="0.000000000 -0.000000116 0.025402765" rpy="0 0 0"/><parent link="rf_tip_left"/><child link="rf_tip_left_tip"/></joint>
+  <link name="mf_tip_left_tip"/>
+  <joint name="mf_tip_left_tip_fixed" type="fixed"><origin xyz="0.000000000 -0.000000116 0.025402765" rpy="0 0 0"/><parent link="mf_tip_left"/><child link="mf_tip_left_tip"/></joint>
+  <link name="ff_tip_left_tip"/>
+  <joint name="ff_tip_left_tip_fixed" type="fixed"><origin xyz="0.000000000 -0.000000116 0.025402765" rpy="0 0 0"/><parent link="ff_tip_left"/><child link="ff_tip_left_tip"/></joint>
+  <link name="th_tip_left_tip"/>
+  <joint name="th_tip_left_tip_fixed" type="fixed"><origin xyz="0.000000000 -0.000000116 0.041002765" rpy="0 0 0"/><parent link="th_tip_left"/><child link="th_tip_left_tip"/></joint>
+</robot>

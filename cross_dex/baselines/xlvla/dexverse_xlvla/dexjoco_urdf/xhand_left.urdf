@@ -1,0 +1,96 @@
+<?xml version="1.0"?>
+<robot name="dj_xhand_left">
+  <link name="hand_root"/>
+  <link name="xhand_left_hand_ee_link"/>
+  <joint name="xhand_left_hand_ee_link_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.065000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="xhand_left_hand_ee_link"/></joint>
+  <link name="xhand_left_hand_back_link"/>
+  <joint name="xhand_left_hand_back_link_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.065000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="xhand_left_hand_back_link"/></joint>
+  <link name="xhand_left_hand_thumb_bend_link"/>
+  <joint name="xhand_left_hand_thumb_bend_joint" type="revolute"><origin xyz="0.022800000 -0.009500000 -0.030500000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="xhand_left_hand_thumb_bend_link"/><axis xyz="0.000000000 0.000000000 -1.000000000"/><limit lower="0.000000" upper="1.832000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_thumb_rota_link1"/>
+  <joint name="xhand_left_hand_thumb_rota_joint1" type="revolute"><origin xyz="0.028599000 -0.008317700 0.001780000" rpy="-0.261798949 0.000000022 -0.040699965"/><parent link="xhand_left_hand_thumb_bend_link"/><child link="xhand_left_hand_thumb_rota_link1"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="-0.698000" upper="1.745000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_thumb_rotaback_link1"/>
+  <joint name="xhand_left_hand_thumb_rotaback_link1_fixed" type="fixed"><origin xyz="0.055300000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_thumb_rota_link1"/><child link="xhand_left_hand_thumb_rotaback_link1"/></joint>
+  <link name="xhand_left_hand_thumb_rota_link2"/>
+  <joint name="xhand_left_hand_thumb_rota_joint2" type="revolute"><origin xyz="0.055300000 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_thumb_rota_link1"/><child link="xhand_left_hand_thumb_rota_link2"/><axis xyz="0.000000000 1.000000000 0.000000000"/><limit lower="0.000000" upper="1.745000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_thumb_rotaback_link2"/>
+  <joint name="xhand_left_hand_thumb_rotaback_link2_fixed" type="fixed"><origin xyz="0.049988100 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_thumb_rota_link2"/><child link="xhand_left_hand_thumb_rotaback_link2"/></joint>
+  <link name="xhand_left_hand_thumb_rota_tip"/>
+  <joint name="xhand_left_hand_thumb_rota_tip_fixed" type="fixed"><origin xyz="0.049988100 0.000000000 0.000000000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_thumb_rota_link2"/><child link="xhand_left_hand_thumb_rota_tip"/></joint>
+  <link name="xhand_left_hand_index_bend_link"/>
+  <joint name="xhand_left_hand_index_bend_joint" type="revolute"><origin xyz="0.026500000 -0.006500000 -0.089900000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="xhand_left_hand_index_bend_link"/><axis xyz="0.000000000 -1.000000000 0.000000000"/><limit lower="-0.174000" upper="0.174000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_index_rota_link1"/>
+  <joint name="xhand_left_hand_index_joint1" type="revolute"><origin xyz="0.000000000 0.000000000 -0.017800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_index_bend_link"/><child link="xhand_left_hand_index_rota_link1"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="0.000000" upper="1.919000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_index_rotaback_link1"/>
+  <joint name="xhand_left_hand_index_rotaback_link1_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.055800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_index_rota_link1"/><child link="xhand_left_hand_index_rotaback_link1"/></joint>
+  <link name="xhand_left_hand_index_rota_link2"/>
+  <joint name="xhand_left_hand_index_joint2" type="revolute"><origin xyz="0.000000000 0.000000000 -0.055800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_index_rota_link1"/><child link="xhand_left_hand_index_rota_link2"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="0.000000" upper="1.919000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_index_rotaback_link2"/>
+  <joint name="xhand_left_hand_index_rotaback_link2_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.042248300" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_index_rota_link2"/><child link="xhand_left_hand_index_rotaback_link2"/></joint>
+  <link name="xhand_left_hand_index_rota_tip"/>
+  <joint name="xhand_left_hand_index_rota_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.042248300" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_index_rota_link2"/><child link="xhand_left_hand_index_rota_tip"/></joint>
+  <link name="xhand_left_hand_mid_link1"/>
+  <joint name="xhand_left_hand_mid_joint1" type="revolute"><origin xyz="0.004000000 -0.006500000 -0.108200000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="xhand_left_hand_mid_link1"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="0.000000" upper="1.919000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_midback_link1"/>
+  <joint name="xhand_left_hand_midback_link1_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.055800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_mid_link1"/><child link="xhand_left_hand_midback_link1"/></joint>
+  <link name="xhand_left_hand_mid_link2"/>
+  <joint name="xhand_left_hand_mid_joint2" type="revolute"><origin xyz="0.000000000 0.000000000 -0.055800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_mid_link1"/><child link="xhand_left_hand_mid_link2"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="0.000000" upper="1.919000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_midback_link2"/>
+  <joint name="xhand_left_hand_midback_link2_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.042248300" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_mid_link2"/><child link="xhand_left_hand_midback_link2"/></joint>
+  <link name="xhand_left_hand_mid_tip"/>
+  <joint name="xhand_left_hand_mid_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.042248300" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_mid_link2"/><child link="xhand_left_hand_mid_tip"/></joint>
+  <link name="xhand_left_hand_ring_link1"/>
+  <joint name="xhand_left_hand_ring_joint1" type="revolute"><origin xyz="-0.016000000 -0.006500000 -0.105200000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="xhand_left_hand_ring_link1"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="0.000000" upper="1.919000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_ringback_link1"/>
+  <joint name="xhand_left_hand_ringback_link1_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.055800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_ring_link1"/><child link="xhand_left_hand_ringback_link1"/></joint>
+  <link name="xhand_left_hand_ring_link2"/>
+  <joint name="xhand_left_hand_ring_joint2" type="revolute"><origin xyz="0.000000000 0.000000000 -0.055800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_ring_link1"/><child link="xhand_left_hand_ring_link2"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="0.000000" upper="1.919000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_ringback_link2"/>
+  <joint name="xhand_left_hand_ringback_link2_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.042248300" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_ring_link2"/><child link="xhand_left_hand_ringback_link2"/></joint>
+  <link name="xhand_left_hand_ring_tip"/>
+  <joint name="xhand_left_hand_ring_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.042248300" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_ring_link2"/><child link="xhand_left_hand_ring_tip"/></joint>
+  <link name="xhand_left_hand_pinky_link1"/>
+  <joint name="xhand_left_hand_pinky_joint1" type="revolute"><origin xyz="-0.036000000 -0.006500000 -0.102200000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="hand_root"/><child link="xhand_left_hand_pinky_link1"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="0.000000" upper="1.919000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_pinkyback_link1"/>
+  <joint name="xhand_left_hand_pinkyback_link1_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.055800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_pinky_link1"/><child link="xhand_left_hand_pinkyback_link1"/></joint>
+  <link name="xhand_left_hand_pinky_link2"/>
+  <joint name="xhand_left_hand_pinky_joint2" type="revolute"><origin xyz="0.000000000 0.000000000 -0.055800000" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_pinky_link1"/><child link="xhand_left_hand_pinky_link2"/><axis xyz="-1.000000000 0.000000000 0.000000000"/><limit lower="0.000000" upper="1.919000" effort="10" velocity="10"/></joint>
+  <link name="xhand_left_hand_pinkyback_link2"/>
+  <joint name="xhand_left_hand_pinkyback_link2_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.042248300" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_pinky_link2"/><child link="xhand_left_hand_pinkyback_link2"/></joint>
+  <link name="xhand_left_hand_pinky_tip"/>
+  <joint name="xhand_left_hand_pinky_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 -0.042248300" rpy="0.000000000 -0.000000000 0.000000000"/><parent link="xhand_left_hand_pinky_link2"/><child link="xhand_left_hand_pinky_tip"/></joint>
+  <link name="xhand_left_hand_ee_link_tip"/>
+  <joint name="xhand_left_hand_ee_link_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0 0 0"/><parent link="xhand_left_hand_ee_link"/><child link="xhand_left_hand_ee_link_tip"/></joint>
+  <link name="xhand_left_hand_back_link_tip"/>
+  <joint name="xhand_left_hand_back_link_tip_fixed" type="fixed"><origin xyz="-0.002415548 0.011119143 0.005057229" rpy="0 0 0"/><parent link="xhand_left_hand_back_link"/><child link="xhand_left_hand_back_link_tip"/></joint>
+  <link name="xhand_left_hand_thumb_rotaback_link1_tip"/>
+  <joint name="xhand_left_hand_thumb_rotaback_link1_tip_fixed" type="fixed"><origin xyz="0.028730539 0.000266664 -0.000904925" rpy="0 0 0"/><parent link="xhand_left_hand_thumb_rota_link1"/><child link="xhand_left_hand_thumb_rotaback_link1_tip"/></joint>
+  <link name="xhand_left_hand_thumb_rotaback_link2_tip"/>
+  <joint name="xhand_left_hand_thumb_rotaback_link2_tip_fixed" type="fixed"><origin xyz="-0.025021861 0.000459472 0.008715789" rpy="0 0 0"/><parent link="xhand_left_hand_thumb_rotaback_link2"/><child link="xhand_left_hand_thumb_rotaback_link2_tip"/></joint>
+  <link name="xhand_left_hand_thumb_rota_tip_tip"/>
+  <joint name="xhand_left_hand_thumb_rota_tip_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0 0 0"/><parent link="xhand_left_hand_thumb_rota_tip"/><child link="xhand_left_hand_thumb_rota_tip_tip"/></joint>
+  <link name="xhand_left_hand_index_rotaback_link1_tip"/>
+  <joint name="xhand_left_hand_index_rotaback_link1_tip_fixed" type="fixed"><origin xyz="-0.000188377 -0.000371732 -0.036230363" rpy="0 0 0"/><parent link="xhand_left_hand_index_rota_link1"/><child link="xhand_left_hand_index_rotaback_link1_tip"/></joint>
+  <link name="xhand_left_hand_index_rotaback_link2_tip"/>
+  <joint name="xhand_left_hand_index_rotaback_link2_tip_fixed" type="fixed"><origin xyz="-0.000154944 0.006581057 0.015353710" rpy="0 0 0"/><parent link="xhand_left_hand_index_rotaback_link2"/><child link="xhand_left_hand_index_rotaback_link2_tip"/></joint>
+  <link name="xhand_left_hand_index_rota_tip_tip"/>
+  <joint name="xhand_left_hand_index_rota_tip_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0 0 0"/><parent link="xhand_left_hand_index_rota_tip"/><child link="xhand_left_hand_index_rota_tip_tip"/></joint>
+  <link name="xhand_left_hand_midback_link1_tip"/>
+  <joint name="xhand_left_hand_midback_link1_tip_fixed" type="fixed"><origin xyz="-0.000002223 -0.000072283 -0.030366098" rpy="0 0 0"/><parent link="xhand_left_hand_mid_link1"/><child link="xhand_left_hand_midback_link1_tip"/></joint>
+  <link name="xhand_left_hand_midback_link2_tip"/>
+  <joint name="xhand_left_hand_midback_link2_tip_fixed" type="fixed"><origin xyz="-0.000154944 0.006581057 0.015353710" rpy="0 0 0"/><parent link="xhand_left_hand_midback_link2"/><child link="xhand_left_hand_midback_link2_tip"/></joint>
+  <link name="xhand_left_hand_mid_tip_tip"/>
+  <joint name="xhand_left_hand_mid_tip_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0 0 0"/><parent link="xhand_left_hand_mid_tip"/><child link="xhand_left_hand_mid_tip_tip"/></joint>
+  <link name="xhand_left_hand_ringback_link1_tip"/>
+  <joint name="xhand_left_hand_ringback_link1_tip_fixed" type="fixed"><origin xyz="-0.000002223 -0.000072283 -0.030366098" rpy="0 0 0"/><parent link="xhand_left_hand_ring_link1"/><child link="xhand_left_hand_ringback_link1_tip"/></joint>
+  <link name="xhand_left_hand_ringback_link2_tip"/>
+  <joint name="xhand_left_hand_ringback_link2_tip_fixed" type="fixed"><origin xyz="-0.000154944 0.006581057 0.015353710" rpy="0 0 0"/><parent link="xhand_left_hand_ringback_link2"/><child link="xhand_left_hand_ringback_link2_tip"/></joint>
+  <link name="xhand_left_hand_ring_tip_tip"/>
+  <joint name="xhand_left_hand_ring_tip_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0 0 0"/><parent link="xhand_left_hand_ring_tip"/><child link="xhand_left_hand_ring_tip_tip"/></joint>
+  <link name="xhand_left_hand_pinkyback_link1_tip"/>
+  <joint name="xhand_left_hand_pinkyback_link1_tip_fixed" type="fixed"><origin xyz="-0.000002223 -0.000072283 -0.030366098" rpy="0 0 0"/><parent link="xhand_left_hand_pinky_link1"/><child link="xhand_left_hand_pinkyback_link1_tip"/></joint>
+  <link name="xhand_left_hand_pinkyback_link2_tip"/>
+  <joint name="xhand_left_hand_pinkyback_link2_tip_fixed" type="fixed"><origin xyz="-0.000154944 0.006581057 0.015353710" rpy="0 0 0"/><parent link="xhand_left_hand_pinkyback_link2"/><child link="xhand_left_hand_pinkyback_link2_tip"/></joint>
+  <link name="xhand_left_hand_pinky_tip_tip"/>
+  <joint name="xhand_left_hand_pinky_tip_tip_fixed" type="fixed"><origin xyz="0.000000000 0.000000000 0.000000000" rpy="0 0 0"/><parent link="xhand_left_hand_pinky_tip"/><child link="xhand_left_hand_pinky_tip_tip"/></joint>
+</robot>
