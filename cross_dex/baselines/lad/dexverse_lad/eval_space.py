@@ -1,4 +1,5 @@
-"""Adopted latent-space metrics 1-3 (experiments/a4/RSS2027/README.md "공유 잠재 공간 평가 메트릭") for LAD models on DexVerse.
+"""Adopted latent-space metrics 1-3 (experiments/a4/RSS2027/README.md "공유 잠재 공간 평가 메트릭") for LAD models on DexVerse and DexJoCo-X
+(the benchmark comes from the pair subsample: DexVerse teleop LeRobot sets, or the DexJoCo-X demos).
 
   1  teleop self reconstruction   teleop finger actions -> encode -> decode on the same hand: joint error (deg), fingertip error (mm)
   2  cross reconstruction         held-out retargeting pair rows: latent of hand A decoded on hand B vs hand B's retargeted
@@ -25,8 +26,13 @@ import torch
 TELEOP = os.environ.get("XLVLA_TELEOP_ROOT", "/workspace/datasets/dexverse/teleop_lerobot")
 
 
-def model_name(h, side):
-    return h if side == "right" else f"{h}_left"
+def model_name(h, side, bench="dexverse"):
+    """Hand model (dexverse_xlvla.hands) of a pair-file hand: DexVerse URDFs, or the DexJoCo-X URDFs (dj_<hand>)."""
+    return ("dj_" if bench == "dexjoco" else "") + h + ("" if side == "right" else "_left")
+
+
+def bench_of(I):
+    return str(I["bench"]) if "bench" in I.files else "dexverse"
 
 
 def prep(a):
@@ -35,11 +41,12 @@ def prep(a):
     P = np.load(a.pairs_sub, allow_pickle=True)
     names = json.loads(str(P["names"]))
     hands = [str(h) for h in P["hands"]]
+    bench = str(P["bench"])
     rng = np.random.default_rng(1000)
     out, info = {}, {}
     for h in hands:
-        m = H.CanonicalHandModel(model_name(h, a.side))
-        if a.side == "left":                                        # pair files carry the right-hand joint names
+        m = H.CanonicalHandModel(model_name(h, a.side, bench))
+        if a.side == "left" and bench == "dexverse":                # pair files carry the right-hand joint names
             try:
                 m.data_index(names[h])
             except KeyError:
@@ -48,7 +55,13 @@ def prep(a):
         assert sorted(idx) == list(range(len(names[h]))), f"{h}: LAD joints and model DoF differ"
         pat = f"{TELEOP}/*/{h}_right/*_right/meta/info.json" if a.side == "right" else f"{TELEOP}/*/{h}_bimanual/*/meta/info.json"
         qs, tasks = [], []
-        for inf in sorted(glob.glob(pat)):
+        if bench == "dexjoco":                                      # DexJoCo-X demos: actuator targets, pair files use the same order
+            from dexverse_xlvla.eval_space_dexjoco import demo_frames
+            dq, tasks = demo_frames(h, a.side, 10 ** 9, rng)
+            q = np.zeros((len(dq), len(idx)), np.float32)
+            q[:, idx] = dq[:, m.data_index(names[h])]
+            qs.append(q)
+        for inf in ([] if bench == "dexjoco" else sorted(glob.glob(pat))):
             ds = os.path.dirname(os.path.dirname(inf))
             act, cols = load_actions(ds)
             q = np.zeros((len(act), len(idx)), np.float32)
@@ -65,7 +78,7 @@ def prep(a):
                    "teleop_joint_std_min": round(float(q.std(0).min()), 4) if len(q) else None, "pair_rows": int(len(out[f"pair_{h}"]))}
         print(h, json.dumps(info[h]), flush=True)
     os.makedirs(a.out, exist_ok=True)
-    np.savez(f"{a.out}/inputs.npz", hands=np.asarray(hands), names=json.dumps(names), side=a.side, info=json.dumps(info), **out)
+    np.savez(f"{a.out}/inputs.npz", hands=np.asarray(hands), names=json.dumps(names), side=a.side, bench=bench, info=json.dumps(info), **out)
 
 
 def decode(a):
@@ -102,7 +115,7 @@ def decode_xlvla(a):
     for spec in a.ckpt:
         name, path = spec.split("=", 1)
         tr = load_eval(path)
-        mn = {h: model_name(h, side) for h in hands}
+        mn = {h: model_name(h, side, bench_of(I)) for h in hands}
         assert all(mn[h] in tr.hand_names for h in hands), (tr.hand_names, hands)
         M = {h: tr.hand_models[mn[h]] for h in hands}
         idx = {h: M[h].data_index(names[h]) for h in hands}
@@ -125,7 +138,7 @@ def metrics(a):
     from dexverse_xlvla.eval_latent import line_err
     I = np.load(f"{a.out}/inputs.npz", allow_pickle=True)
     hands = [str(h) for h in I["hands"]]; names = json.loads(str(I["names"])); side = str(I["side"])
-    M = {h: H.CanonicalHandModel(model_name(h, side)) for h in hands}
+    M = {h: H.CanonicalHandModel(model_name(h, side, bench_of(I))) for h in hands}
     idx = {h: M[h].data_index(names[h]) for h in hands}
 
     def tips(h, q):                                                 # LAD-order joints (rad) -> canonical fingertips (m)
