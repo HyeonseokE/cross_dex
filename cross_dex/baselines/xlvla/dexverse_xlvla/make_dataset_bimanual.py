@@ -30,18 +30,29 @@ import dexverse_xlvla.make_dataset as MD
 from dexverse_xlvla import bimanual as B
 
 LEROBOT_ROOT = os.environ.get("XLVLA_TELEOP_ROOT", "/workspace/datasets/dexverse/teleop_lerobot")   # read only
+# several teleop roots (e.g. cells copied from another server into a separate folder): os.pathsep-separated, searched in
+# order; per cell the first set with EPISODES episodes is used (a 1-episode set in an earlier root is skipped)
+ROOTS = [r for r in os.environ.get("XLVLA_TELEOP_ROOTS", LEROBOT_ROOT).split(os.pathsep) if r]
+EPISODES = int(os.environ.get("XLVLA_TELEOP_EPISODES", "50"))
 SKIP = ("_failed_", "_r1_", "_try")
 TASKS = ("Dexverse-OpenFlatFolder-v1", "Dexverse-SlideUtilityKnife-v1", "Dexverse-BimanualLiftTray-v0",
          "Dexverse-BimanualLiftCarton-v0")
 HANDS = ("shadow", "inspire", "sharpa", "wuji", "allegro", "leap")
 
 
-def bimanual_dir(task: str, hand: str) -> str:
-    hits = [h for h in sorted(glob.glob(f"{LEROBOT_ROOT}/{task}/{hand}_bimanual/*_bimanual/meta/info.json"))
-            if not any(s in h for s in SKIP)]
-    if len(hits) != 1:
-        raise FileNotFoundError(f"{task} {hand}: need one bimanual LeRobot set, found {hits}")
-    return os.path.dirname(os.path.dirname(hits[0]))
+def bimanual_dir(task: str, hand: str, roots: list | None = None) -> str:
+    seen = []
+    for root in roots or ROOTS:
+        hits = [h for h in sorted(glob.glob(f"{root}/{task}/{hand}_bimanual/*_bimanual/meta/info.json"))
+                if not any(s in h for s in SKIP)]
+        if len(hits) > 1:
+            raise FileNotFoundError(f"{task} {hand}: several bimanual LeRobot sets in {root}: {hits}")
+        for h in hits:
+            n = json.load(open(h))["total_episodes"]
+            seen.append((h, n))
+            if n == EPISODES:
+                return os.path.dirname(os.path.dirname(h))
+    raise FileNotFoundError(f"{task} {hand}: no bimanual LeRobot set with {EPISODES} episodes in {roots or ROOTS}: {seen}")
 
 
 def available(tasks, hands) -> list:
@@ -119,11 +130,15 @@ def main() -> None:
     ap.add_argument("--ckpt_left", help="left 6-hand latent (latent space)")
     ap.add_argument("--pad", type=int, default=B.PAD, help="joint space: fingers per hand zero-padded to this")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--roots", default="", help="teleop LeRobot roots, os.pathsep-separated (default: $XLVLA_TELEOP_ROOTS "
+                    "or $XLVLA_TELEOP_ROOT or the standard teleop_lerobot)")
     ap.add_argument("--exclude", default="", help="comma-separated <task>:<hand> cells left out of <out>/all")
     ap.add_argument("--missing_ok", action="store_true", help="skip cells whose teleop set is not on this server")
     ap.add_argument("--merge_only", action="store_true")
     ap.add_argument("--no_merge", action="store_true", help="convert the cells only")
     a = ap.parse_args()
+    if a.roots:
+        ROOTS[:] = [r for r in a.roots.split(os.pathsep) if r]
     tasks, hands = a.task.split(","), a.hands.split(",")
     excl = {tuple(c.split(":")) for c in a.exclude.split(",") if c}
     if a.merge_only:   # cells converted before (possibly on other servers and copied here): every <out>/<t>/<h>/.done
@@ -144,13 +159,18 @@ def main() -> None:
             if h not in spaces or spaces[h][0] != cal:
                 spaces[h] = (cal, B.build(cal, h, a.space, a.ckpt, a.ckpt_left, a.pad))
             print(f"[data-bi] {t} {h}: finger names {[(s, spaces[h][1].side[s]['rule']) for s in B.SIDES]}", flush=True)
-            convert(spaces[h][1], bimanual_dir(t, h), d, robot_type)
+            src = bimanual_dir(t, h)
+            convert(spaces[h][1], src, d, robot_type)
+            json.dump({"task": t, "hand": h, "source": src, "episodes": json.load(open(f"{src}/meta/info.json"))["total_episodes"],
+                       "space": a.space}, open(f"{d}/source.json", "w"), indent=1)
             open(f"{d}/.done", "w").close()
     if a.no_merge:
         return
     MD.merge([f"{a.out}/{t}/{h}" for t, h in cells], f"{a.out}/all")
     json.dump({"space": a.space, "tasks": tasks, "hands": hands, "excluded": sorted(map(list, excl)),
-               "cells": [list(c) for c in cells], "ckpt": a.ckpt, "ckpt_left": a.ckpt_left, "wrist": a.wrist,
+               "cells": [list(c) for c in cells],
+               "sources": {f"{t}:{h}": (json.load(open(f"{a.out}/{t}/{h}/source.json")) if os.path.exists(
+                   f"{a.out}/{t}/{h}/source.json") else None) for t, h in cells}, "ckpt": a.ckpt, "ckpt_left": a.ckpt_left, "wrist": a.wrist,
                "pad": a.pad if a.space == "joint" else None},
               open(f"{a.out}/all/meta/xlvla_cells.json", "w"), indent=1)
 
