@@ -14,6 +14,8 @@
 #   CELLS (task:hand,... instead of TASKS x HANDS), GATHER_MS (5 = greedy, measured best 2026-11-16; 1000 = lockstep), MAX_BATCH (=WORKERS), NOISE (process | episode, NOISE_SEED 0), PRECOMPILE (=MAX_BATCH)
 #   LOG_ACTIONS=1 (server.json log_dir = <cell>/actions: policy_out / action per episode, for old-vs-shared comparisons)
 #   STAGGER (90 s between session starts), DRY_RUN=1 (print the server command, each cell's server.json and command; no launch)
+#   UNIQUE_LAYOUTS (1): per cell, EPS with repeated initial layouts replaced by the next distinct ones (unique_eps.py, cached
+#   in <cell>/episodes; unchanged for pickles without repeats); 0 = EPS as given
 set -u
 : "${R:?}" "${CK:?}" "${LATENT:?}" "${WRIST_DIR:?}" "${MODE:?}"
 [[ $MODE == pi05_* ]] || { echo "eval_shared.sh: pi0.5 modes only (MODE=$MODE)"; exit 2; }
@@ -22,7 +24,7 @@ TASKS=${TASKS:-Dexverse-GraspBleach-v0,Dexverse-GraspPan-v0,Dexverse-GraspKettle
 HANDS=${HANDS:-shadow,inspire,sharpa,wuji}; WT=${DEXVERSE_WORKTREE:-DexVerse}
 PKL_ROOT=${XLVLA_PKL_ROOT:-/workspace/datasets/dexverse/teleop_pkl_bs1}
 SHARED=${SHARED:-1}; GATHER_MS=${GATHER_MS:-5}; MAX_BATCH=${MAX_BATCH:-$WORKERS}; NOISE=${NOISE:-process}
-PRECOMPILE=${PRECOMPILE:-$MAX_BATCH}; STAGGER=${STAGGER:-90}; DRY=${DRY_RUN:-}
+PRECOMPILE=${PRECOMPILE:-$MAX_BATCH}; STAGGER=${STAGGER:-90}; DRY=${DRY_RUN:-}; UNIQUE=${UNIQUE_LAYOUTS:-1}
 export XLVLA_COMMON_DP=${XLVLA_COMMON_DP:-/workspace/codes/dexverse/$WT/baselines/lerobot_dp}
 export PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -66,20 +68,30 @@ pickle_of() {  # task hand -> pickle (as eval_mt.sh)
   else ls $PKL_ROOT/*/$1/${1}_*_floating_${2}_right.pkl 2>/dev/null | head -1 | grep . || echo MISSING_PICKLE; fi
 }
 
-eval_cmd() {  # task hand pickle -> the evaluator command (inside the main env, cwd DEXVERSE_ROOT)
+eps_of() {  # task hand pickle -> this cell's episodes (EPS, or with distinct initial layouts; cached in <cell>/episodes)
+  local o=$R/eval/final/$1/$2 e
+  [ "$UNIQUE" = 1 ] || { echo $EPS; return; }
+  [ -s $o/episodes ] && [ "$(head -1 $o/episodes)" = "$3 $EPS" ] && { tail -1 $o/episodes; return; }
+  e=$( source /workspace/codes/_setup/dexverse_env.sh $WT >/dev/null 2>&1; python $HERE/unique_eps.py $3 $EPS ) || { log "$1 $2: unique_eps failed, EPS as given" >&2; echo $EPS; return; }
+  [ "$e" = "$EPS" ] || log "$1 $2: repeated initial layouts in $(basename $3) -> episodes $e" >&2
+  [ -n "$DRY" ] || { mkdir -p $o; printf '%s\n%s\n' "$3 $EPS" "$e" > $o/episodes; }
+  echo $e
+}
+
+eval_cmd() {  # task hand pickle episodes -> the evaluator command (inside the main env, cwd DEXVERSE_ROOT)
   local o=$R/eval/final/$1/$2
   if [ "$SHARED" = 1 ]; then
     echo env CUDA_VISIBLE_DEVICES=$GPU python $HERE/run_eval_shared.py --mode shared --shared_port $PORT --timing $o/timing.jsonl \
-      --demos $3 --ckpt $o --output_dir $o/eval --episodes $EPS --max_steps $MAX_STEPS --headless
+      --demos $3 --ckpt $o --output_dir $o/eval --episodes $4 --max_steps $MAX_STEPS --headless
   else   # old path: the baseline wrapper and server, unchanged
     echo env CUDA_VISIBLE_DEVICES=$GPU python $XLVLA/dexverse_xlvla/run_eval.py \
-      --demos $3 --ckpt $o --output_dir $o/eval --episodes $EPS --max_steps $MAX_STEPS --headless
+      --demos $3 --ckpt $o --output_dir $o/eval --episodes $4 --max_steps $MAX_STEPS --headless
   fi
 }
 
 cell() {  # task hand
-  local t=$1 h=$2 o=$R/eval/final/$1/$2 pk lg pid
-  pk=$(pickle_of $t $h); mkdir -p $o; lg=$o/eval.log
+  local t=$1 h=$2 o=$R/eval/final/$1/$2 pk lg pid ep
+  pk=$(pickle_of $t $h); mkdir -p $o; lg=$o/eval.log; ep=$(eps_of $t $h $pk)
   pid=$(pgrep -f "run_eval(_shared)?.py .*--output_dir $o/eval " | head -1)
   if [ -n "$pid" ] && [ "$SHARED" = 1 ]; then   # its openpi server (previous manager, new port) is gone: start the cell again
     log "$t $h: stale evaluation (pid $pid) of a previous manager, killed"; { pkill -P $pid; kill $pid; sleep 5; pkill -9 -P $pid; kill -9 $pid; } 2>/dev/null; pid=
@@ -89,7 +101,7 @@ cell() {  # task hand
     server_json $t $h > $o/server.json
     rm -rf $o/eval $o/actions $o/timing.jsonl
     ( source /workspace/codes/_setup/dexverse_env.sh $WT >/dev/null; cd $DEXVERSE_ROOT; unset DEXVERSE_FINGER_DRIVE DEXVERSE_DRIVE_SPECS
-      exec $(eval_cmd $t $h $pk) ) < /dev/null > $lg 2>&1 & pid=$!
+      exec $(eval_cmd $t $h $pk $ep) ) < /dev/null > $lg 2>&1 & pid=$!
   fi
   while kill -0 $pid 2>/dev/null; do   # as eval_mt.sh: STOPPED, wanted episodes reached, silent log for 1 h
     sleep 20
@@ -137,7 +149,7 @@ if [ -n "$DRY" ]; then
   while read -r t h; do
     pk=$(pickle_of $t $h)
     echo "[cell $t $h] server.json: $(server_json $t $h)"
-    echo "[cell $t $h] cd \$DEXVERSE_ROOT && $(eval_cmd $t $h $pk)"
+    echo "[cell $t $h] cd \$DEXVERSE_ROOT && $(eval_cmd $t $h $pk $(eps_of $t $h $pk))"
   done < <(cells)
   exit 0
 fi
