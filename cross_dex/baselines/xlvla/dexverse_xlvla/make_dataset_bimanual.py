@@ -12,6 +12,8 @@ the env action joints read from the simulator (wrist calibration), otherwise the
   python -m dexverse_xlvla.make_dataset_bimanual --space latent --task <t1,...> --hands <h1,...> --wrist <calib folder>
          --ckpt <right latent.pt> --ckpt_left <left latent.pt> --out <root> [--exclude <task>:<hand>,...]
   (--space joint: --ckpt / --ckpt_left not needed)
+Cells split over servers: on each server --missing_ok --no_merge (converts the cells whose teleop set is there), copy
+the <out>/<task>/<hand> folders to one place, then --merge_only there (merges every cell with a .done marker).
 """
 from __future__ import annotations
 
@@ -124,8 +126,11 @@ def main() -> None:
     a = ap.parse_args()
     tasks, hands = a.task.split(","), a.hands.split(",")
     excl = {tuple(c.split(":")) for c in a.exclude.split(",") if c}
-    cells = [c for c in ([(t, h) for t in tasks for h in hands] if not a.missing_ok else available(tasks, hands))
-             if c not in excl]
+    if a.merge_only:   # cells converted before (possibly on other servers and copied here): every <out>/<t>/<h>/.done
+        cells = [(t, h) for t in tasks for h in hands if os.path.exists(f"{a.out}/{t}/{h}/.done") and (t, h) not in excl]
+    else:
+        cells = [c for c in ([(t, h) for t in tasks for h in hands] if not a.missing_ok else available(tasks, hands))
+                 if c not in excl]
     if a.space == "latent" and not (a.ckpt and a.ckpt_left) and not a.merge_only:
         ap.error("--space latent needs --ckpt and --ckpt_left")
     robot_type = f"xlvla_{a.space}_bimanual_dexverse"
