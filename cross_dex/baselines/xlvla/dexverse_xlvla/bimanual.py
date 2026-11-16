@@ -163,3 +163,45 @@ def build(calib_json: str, hand: str, space: str, ckpt: str | None = None, ckpt_
     else:
         raise ValueError(space)
     return BimanualSpace(calib, hand, models, codecs, pad)
+
+
+def summary(folder: str) -> dict:
+    """Per task and hand, what the simulator says each env action / state dim is (from the calibration files)."""
+    import glob
+    import os
+    out = {}
+    for f in sorted(glob.glob(f"{folder}/wrist_calib_*.json")):
+        task = os.path.basename(f)[len("wrist_calib_"):-5]
+        for h, c in json.load(open(f)).items():
+            terms = {}
+            for i, m in enumerate(c["action_map"]):
+                t = terms.setdefault(m["term"], {"class": m["kind"], "dims": [], "joints": [], "scale": set(), "offset": []})
+                t["dims"].append(i)
+                t["joints"].append(m["joint"])
+                t["scale"].add(m["scale"])
+                t["offset"].append(m["offset"])
+            for t in terms.values():
+                t["dims"] = f"{t['dims'][0]}-{t['dims'][-1]}"
+                t["scale"] = sorted(t["scale"], key=str)
+            out.setdefault(h, {})[task] = {
+                "robot_type": c["robot_type"], "action_dims": len(c["action_joints"]),
+                "state_dims": len(c["state_order_joints"]),
+                "state_extra_joints": c["state_order_joints"][len(c["action_joints"]):],
+                "action_semantics": "absolute joint position target = offset + scale * action (JointPositionAction)",
+                "action_target_check_max_abs_err": c["action_target_check"]["max_abs_err"],
+                "terms": terms,
+                "sides": {s: {"wrist_dims": c["sides"][s]["wrist_dims"], "wrist_joints": c["sides"][s]["action_joints"],
+                              "wrist_offset": c["sides"][s]["action_offset"],
+                              "finger_dims": f"{c['sides'][s]['finger_dims'][0]}-{c['sides'][s]['finger_dims'][-1]}",
+                              "n_fingers": len(c["sides"][s]["finger_dims"]), "root_body": c["sides"][s]["body"],
+                              "hand_model": c["sides"][s]["hand_model"],
+                              "poe_check_mm": round(c["sides"][s]["check_pos_err_max_m"] * 1000, 4),
+                              "passive_joints": c["sides"][s]["passive_joints"]} for s in SIDES}}
+    return out
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) == 3 and sys.argv[1] == "summary":   # python -m dexverse_xlvla.bimanual summary <calib folder>
+        json.dump(summary(sys.argv[2]), open(f"{sys.argv[2]}/action_semantics.json", "w"), indent=1)
+        print(f"{sys.argv[2]}/action_semantics.json")

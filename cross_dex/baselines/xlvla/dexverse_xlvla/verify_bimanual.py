@@ -98,6 +98,13 @@ def check1(space, calib, act, st, pkl_act) -> dict:
             p, ang = pose_err(va[:n], vs[lag:lag + n])
             scan[lag] = (_r(np.median(p), 2), _r(np.median(ang), 2))
         r["wrist_lag_scan_median_mm_deg"] = scan
+        # approach phase only (first quarter of the episode, before the hands hold the object): a target the hand cannot
+        # reach because it pushes into the object shows up as a persistent offset later in the episode
+        q4 = max(len(act) // 4, 13)
+        p, ang = pose_err(va[:q4 - 12], vs[12:q4])
+        r["wrist_lag12_first_quarter_median_mm_deg"] = (_r(np.median(p), 2), _r(np.median(ang), 2))
+        p, ang = pose_err(va[-q4:-12], vs[-q4 + 12:])
+        r["wrist_lag12_last_quarter_median_mm_deg"] = (_r(np.median(p), 2), _r(np.median(ang), 2))
         # raw joints per wrist dim (offset + scale * a vs state, lag 1) and the same without the offset
         ja = W.joints(act[:, d["wdims"]])
         r["wrist_joints"] = calib["sides"][s]["action_joints"]
