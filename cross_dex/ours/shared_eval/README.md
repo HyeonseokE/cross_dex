@@ -35,7 +35,7 @@ tests/test_shared.py CPU 단위 시험 (가짜 정책)
 ## 묶음 추론·노이즈
 
 - **모으기** (`batch_server.py`, DP와 공통): 요청 하나가 오면 이미 와 있는 것을 다 받고, `--gather_ms` 동안 또는 접속한 세션이 모두 기다릴 때까지 더 모은 뒤
-  한 번에 추론. `GATHER_MS=1000`(기본) = lockstep(매 추론에 모든 활성 세션), `5` = greedy. `--max_batch`로 자른다.
+  한 번에 추론. `GATHER_MS=5`(eval_shared.sh 기본, greedy) / `1000` = lockstep(매 추론에 모든 활성 세션; bench.sh 기본). `--max_batch`로 자른다.
   세션이 기다리는 동안 시뮬레이션은 멈춰 있다 (평가기가 동기식: 응답 전에는 `env.step` 안 함).
 - **노이즈** (`batched_policy.py`): openpi `Policy.infer`는 호출마다 `self._rng, k = split(self._rng)`(시작 `key(0)`), 모델 안에서 `normal(k, (1,H,D))`.
   공유 서버는 세션마다 키를 따로 들고 같은 방식으로 split 하고, 행 i의 노이즈를 `normal(k_i, (1,H,D))`로 만들어 `noise=`로 넘긴다
@@ -51,7 +51,7 @@ tests/test_shared.py CPU 단위 시험 (가짜 정책)
 R=<run> CK=<openpi step dir> LATENT=<latent.pt> WRIST_DIR=<dir> MODE=pi05_latent PI05_RUN=<run> PI05_REPO=<id> PI05_ADIM=41 \
   GPU=0 WORKERS=4 bash /workspace/codes/cross_dex/cross_dex/ours/shared_eval/pi05/eval_shared.sh
 #   BIMANUAL=1 PI05_MAXTOK=360 LATENT_LEFT=...  / MODE=pi05_lad LAD_CKPT=...   (eval_mt.sh와 같음)
-#   GATHER_MS(1000) MAX_BATCH(=WORKERS) NOISE(process|episode) PRECOMPILE(=MAX_BATCH) LOG_ACTIONS=1 STAGGER(90)
+#   GATHER_MS(5) MAX_BATCH(=WORKERS) NOISE(process|episode) PRECOMPILE(=MAX_BATCH) LOG_ACTIONS=1 STAGGER(90)
 #   SHARED=0: 칸마다 재현 run_eval.py(옛 경로, 칸별 openpi) — 같은 관리자로 옛/새 비교
 #   DRY_RUN=1: 서버 명령·칸별 server.json·평가 명령만 출력
 # 측정: 같은 칸 N세션
@@ -88,3 +88,13 @@ claim `.claim_<task>_<hand>`, `want`, `STOPPED`, `KEEP_CLAIMS`, 끝난 칸 건�
    B batch 3 vs 단독 차이(XLA 커널이 shape마다 다를 수 있음), C B=1..6 추론 시간·메모리.
 2. 같은 칸·에피소드 옛(`bench.sh dedicated 2`: 옛 vs 옛 재현성) vs 공유(N=2..5) 행동·성공 비교 (`summarize.py --compare`).
 3. 처리량·VRAM: N=2,3,4,5 (32 GB RTX 5090), lockstep vs greedy 1회.
+
+## GPU 결과 (2026-11-16 vast-isaac RTX 5090 32 GB, 관절 멀티태스크 pi05_joint 19999, GraspPan shadow ep 1·2, 400 step, 영상 없음)
+
+- `check_batch.py`: A B=1 공유 경로 == `Policy.infer` **비트 단위 일치** (합성·실제 관측 모두). B batch 3 vs 단독 최대 |차이|: 실제 관측 0.0037, 합성 0.020
+  (policy_out 범위 약 ±1). 같은 칸 옛 vs 옛 첫 청크 차이 0.0029(렌더링 이미지가 실행마다 다름, step 0 픽셀 최대 19~45), 옛 vs 공유 0.0026~0.0037 → batch 차이는 실행 간 차이와 같은 크기.
+  C 추론 시간 B=1..5: 67·105·137·173·207 ms (행마다 약 35 ms 증가 → batch 이득은 작고, 주된 이득은 VRAM).
+- 처리량(세션당 steps/s, 합계) · 최대 VRAM: 옛 N=2 8.66·17.3·26.5 GB / 공유 N=2 7.86·15.7·17.6 GB / N=3 6.59·19.8·22.2 GB /
+  N=4 lockstep 5.75·23.0·26.5 GB / N=4 greedy 6.03·24.1·26.7 GB. 공유 서버 약 8.4 GB + Isaac 세션당 약 4.4 GB.
+- 32 GB: 옛 경로 최대 2세션, 공유 경로 4세션 (N=5 예상 약 30.8 GB = 94.5%, 95% 규칙·Vulkan 과소집계 때문에 띄우지 않음). 권장 WORKERS=4, GATHER_MS=5.
+- 시험 출력: vast-isaac `/workspace/.tmp/shared_eval_test/`.

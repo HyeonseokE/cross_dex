@@ -11,7 +11,7 @@
 # env as eval_mt.sh (pi0.5 part): LAD_CKPT, BIMANUAL=1 (+ PI05_MAXTOK, LATENT_LEFT, LAD_CKPT_LEFT), REPLAN (10), EPS, MAX_STEPS,
 #   TASKS, HANDS, ONLY_TASKS, DEXVERSE_WORKTREE, STOP_ON_KILL, KEEP_CLAIMS. Ours:
 #   SHARED (1; 0 = each cell runs the BASELINE run_eval.py with its own openpi process = old path, for comparisons)
-#   GATHER_MS (1000 = lockstep), MAX_BATCH (=WORKERS), NOISE (process | episode, NOISE_SEED 0), PRECOMPILE (=MAX_BATCH)
+#   GATHER_MS (5 = greedy, measured best 2026-11-16; 1000 = lockstep), MAX_BATCH (=WORKERS), NOISE (process | episode, NOISE_SEED 0), PRECOMPILE (=MAX_BATCH)
 #   LOG_ACTIONS=1 (server.json log_dir = <cell>/actions: policy_out / action per episode, for old-vs-shared comparisons)
 #   STAGGER (90 s between session starts), DRY_RUN=1 (print the server command, each cell's server.json and command; no launch)
 set -u
@@ -21,7 +21,7 @@ GPU=${GPU:-0}; WORKERS=${WORKERS:-4}; MAX_STEPS=${MAX_STEPS:-3000}; EPS=${EPS:-$
 TASKS=${TASKS:-Dexverse-GraspBleach-v0,Dexverse-GraspPan-v0,Dexverse-GraspKettle-v0,Dexverse-FunctionalHammerStrike-v0}
 HANDS=${HANDS:-shadow,inspire,sharpa,wuji}; WT=${DEXVERSE_WORKTREE:-DexVerse}
 PKL_ROOT=${XLVLA_PKL_ROOT:-/workspace/datasets/dexverse/teleop_pkl_bs1}
-SHARED=${SHARED:-1}; GATHER_MS=${GATHER_MS:-1000}; MAX_BATCH=${MAX_BATCH:-$WORKERS}; NOISE=${NOISE:-process}
+SHARED=${SHARED:-1}; GATHER_MS=${GATHER_MS:-5}; MAX_BATCH=${MAX_BATCH:-$WORKERS}; NOISE=${NOISE:-process}
 PRECOMPILE=${PRECOMPILE:-$MAX_BATCH}; STAGGER=${STAGGER:-90}; DRY=${DRY_RUN:-}
 export XLVLA_COMMON_DP=${XLVLA_COMMON_DP:-/workspace/codes/dexverse/$WT/baselines/lerobot_dp}
 export PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
