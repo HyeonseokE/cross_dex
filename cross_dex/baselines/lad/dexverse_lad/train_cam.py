@@ -84,6 +84,35 @@ class RunRecord:
             self.meta.setdefault("result", {}).update(kw); self.meta.update(end_time=self.kst(), status="done"); self._dump()
 
 
+def hand_models(pairs, hands, left=False):
+    """dexverse_xlvla FK models of the pair file's hands (DexVerse URDFs, or dj_<hand> for DexJoCo-X) with their joint limits
+    in the pair columns' order: {hand: {model, idx (model dof -> column), lo, hi}}. Needs DexLatent on the path."""
+    import sys
+    sys.path.insert(0, os.environ.get("DEXLATENT_ROOT", "/workspace/codes/dexverse/DexLatent"))
+    from dexverse_xlvla import hands as H
+    pm = json.load(open(pairs[:-4] + ".meta.json"))
+    out = {}
+    for h in hands:
+        mname = ("dj_" if pm["bench"] == "dexjoco" else "") + h + ("_left" if left else "")
+        m = H.CanonicalHandModel(mname)
+        names = pm["joint_names"][h]
+        if left and pm["bench"] == "dexverse":
+            try:
+                m.data_index(names)
+            except KeyError:
+                names = [x.replace("right_", "left_") for x in names]
+        idx = m.data_index(names)
+        lo, hi = torch.empty(len(idx)), torch.empty(len(idx))
+        lo[idx], hi[idx] = m._lower, m._upper
+        out[h] = {"model": m, "idx": torch.tensor(idx), "lo": lo, "hi": hi}
+    return out
+
+
+def fk_tips(fk, x):
+    """Limits-normalised joints in the pair columns' order -> canonical fingertips [B, T, 3] (differentiable)."""
+    return fk["model"].forward(x[:, fk["idx"].to(x.device)])
+
+
 def make_model(dims, a):
     cfg = OmegaConf.create({"model": {
         "embedding_dim": a.latent, "encoder_dropout": a.dropout, "decoder_dropout": a.dropout,
@@ -168,6 +197,20 @@ def main():
                     help="stage 2 trains the decoders only, encoders frozen (paper Table III 'no FT'; the public "
                          "two_step_train.py). Default: encoders fine-tuned at --lr with lam * contrastive (paper Sec. III-B)")
     ap.add_argument("--run_dir", default="", help="experiment run folder: config.yaml, meta.json, metrics.csv are written there")
+    # ---- our variant (2026-11-16, user: "1번이랑 4번으로 진행"): not the LAD paper; defaults keep the paper setting ----
+    ap.add_argument("--norm", choices=["zscore", "limits"], default="zscore",
+                    help="input normalisation: zscore = per-joint mean / std of the pairs (LAD code); limits = URDF joint limits "
+                         "-> [-1, 1] (XL-VLA), so poses outside the pair distribution stay in range")
+    ap.add_argument("--rand_w", type=float, default=0.0,
+                    help="stage 2: + rand_w * self reconstruction of joint configurations sampled uniformly in the limits, "
+                         "fresh every step for every hand (XL-VLA's pose generator; needs --norm limits)")
+    ap.add_argument("--rand_batch", type=int, default=4096)
+    ap.add_argument("--geo_w", type=float, default=0.0,
+                    help="stage 2: + geo_w * XL-VLA cross-hand geometry loss on those random poses: a random pose of hand A "
+                         "decoded on hand B keeps A's thumb->finger fingertip lines (lambda_dis * length MSE + lambda_dir * "
+                         "(1 - cos)), fingertips in the hand-common canonical frame (dexverse_xlvla FK)")
+    ap.add_argument("--lambda_dis", type=float, default=2000.0)   # XL-VLA / DexLatent TrainingConfig defaults
+    ap.add_argument("--lambda_dir", type=float, default=5.0)
     ap.add_argument("--left", action="store_true",
                     help="convert the (right-hand) pairs to the left-hand joint convention at load (build_pairs_bench.left_map, "
                          "needs <pairs>.meta.json); same data as build_pairs_bench's left file without storing it")
@@ -193,6 +236,14 @@ def main():
     hands = list(raw)
     n = len(raw[hands[0]])
     norm = {h: {"mean": raw[h].mean(0), "std": raw[h].std(0) + 1e-8} for h in hands}
+    FK = None
+    if a.norm == "limits" or a.geo_w:
+        FK = hand_models(a.pairs, hands, a.left)
+        if a.norm == "limits":                     # limits -> [-1, 1]: mean = centre, std = half range (stored like z-score stats)
+            norm = {h: {"mean": ((FK[h]["hi"] + FK[h]["lo"]) / 2).numpy(), "std": ((FK[h]["hi"] - FK[h]["lo"]) / 2).numpy() + 1e-8}
+                    for h in hands}
+    if a.rand_w or a.geo_w:
+        assert a.norm == "limits", "--rand_w / --geo_w sample in the normalised space: use --norm limits"
     perm = np.random.permutation(n); ntr = int(a.split * n)
     X = {h: torch.tensor((raw[h] - norm[h]["mean"]) / norm[h]["std"], dtype=torch.float32, device=dev) for h in hands}
     tr, va = torch.tensor(perm[:ntr], device=dev), torch.tensor(perm[ntr:], device=dev)
@@ -280,6 +331,33 @@ def main():
     else:
         opt = torch.optim.AdamW([{"params": model.decoders.parameters(), "lr": a.ft_lr},
                                  {"params": model.encoders.parameters(), "lr": a.lr}], weight_decay=a.wd)
+    gen = torch.Generator(device=dev); gen.manual_seed(a.seed + 7)
+    fkm = {}
+    if a.geo_w:
+        fkm = FK                                    # HandKinematicsModel moves its tensors to the input's device itself
+
+    def extra_loss():
+        """XL-VLA terms on fresh uniform poses (normalised = limits space): self reconstruction and cross-hand geometry."""
+        R = {h: torch.rand(a.rand_batch, len(norm[h]["mean"]), generator=gen, device=dev) * 2 - 1 for h in hands}
+        zr = model.encode(R)
+        out, lr, lg = 0.0, 0.0, 0.0
+        if a.rand_w:
+            lr = sum(F.mse_loss(model.decoders[h](zr[h]), R[h]) for h in hands) / len(hands); out = out + a.rand_w * lr
+        if a.geo_w:
+            terms = []
+            for s_ in hands:
+                ts = fk_tips(fkm[s_], R[s_]).detach()
+                for t_ in hands:
+                    if t_ == s_:
+                        continue
+                    tt = fk_tips(fkm[t_], model.decoders[t_](zr[s_]).clamp(-1, 1))
+                    k = min(ts.shape[1], tt.shape[1])
+                    ls, lt = ts[:, 1:k] - ts[:, :1], tt[:, 1:k] - tt[:, :1]          # thumb -> finger lines
+                    terms.append(a.lambda_dis * F.mse_loss(lt.norm(dim=-1), ls.norm(dim=-1))
+                                 + a.lambda_dir * (1 - F.cosine_similarity(lt, ls, dim=-1)).mean())
+            lg = sum(terms) / len(terms); out = out + a.geo_w * lg
+        return out, float(lr), float(lg)
+
     stop2 = Stopper()
     for e in range(r_epoch + 1 if r_stage == 2 else 0, a.dec_epochs):
         for b in batches():
@@ -293,14 +371,16 @@ def main():
             z = model.encode(b)
             rec = sum(F.mse_loss(model.decoders[h](z[h]), b[h]) for h in hands) / len(hands)
             con, g = pair_contrastive(z, a.t1)
-            # gradient of rec + lam * con
-            torch.autograd.backward([rec] + [z[h] for h in hands], [None] + [a.lam * g[h] for h in hands]); opt.step()
+            ex, lr_, lg_ = extra_loss() if (a.rand_w or a.geo_w) else (0.0, 0.0, 0.0)
+            # gradient of rec (+ XL-VLA terms) + lam * con
+            torch.autograd.backward([rec + ex] + [z[h] for h in hands], [None] + [a.lam * g[h] for h in hands]); opt.step()
         if e % a.eval_every == 0 or e == a.dec_epochs - 1:
             cr = cross_recon(model, Xva, std)
             if a.freeze_encoder:
                 model.encoders.eval()
             sr = {h: cr[f"{h}_to_{h}"] for h in hands}
             r = {"stage": 2, "epoch": e, "train_recon": float(rec), "train_contrastive": con,
+                 **({"train_rand_recon": lr_, "train_geo": lg_} if (a.rand_w or a.geo_w) else {}),
                  "val_SR_mean": float(np.mean(list(sr.values()))),
                  "val_CR_mean": float(np.mean([v for k, v in cr.items() if k.split("_to_")[0] != k.split("_to_")[1]])),
                  "sec": time.time() - t}

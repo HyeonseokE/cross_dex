@@ -2,7 +2,7 @@
 as they are, like the common LeRobot DP training (openpi's pinned lerobot reads only v2.1; openpi itself is not edited:
 openpi_train.py swaps openpi.training.data_loader.create_torch_dataset for V3Dataset).
 
-Sample i (global frame index) -> {"image", "wrist_image": HWC uint8 frames decoded from the AV1 videos at that timestamp,
+Sample i (global frame index) -> {"image", "wrist_image" (+ "left_wrist_image" on bimanual sets): HWC uint8 frames decoded from the AV1 videos at that timestamp,
 "state": observation.state (41), "actions": action[i : i+H] (H, 41, last frame of the episode repeated past its end, as
 lerobot's delta_timestamps clamping), "prompt": task sentence}.
 Numeric columns are loaded once (small); videos are decoded per sample with torchcodec (one decoder cache per worker).
@@ -22,13 +22,22 @@ PROMPTS = {
     "Dexverse-GraspBleach-v0": "grasp the bleach bottle",
     "Dexverse-GraspKettle-v0": "grasp the kettle",
     "Dexverse-GraspPan-v0": "grasp the pan",
+    # bimanual (2026-11-16): same file's v0 sentences; folder / knife teleop sets are the v1 tasks
+    "Dexverse-OpenFlatFolder-v1": "open the flat folder",
+    "Dexverse-SlideUtilityKnife-v1": "slide out the utility knife blade",
+    "Dexverse-BimanualLiftTray-v0": "lift the tray with both hands",
+    "Dexverse-BimanualLiftCarton-v0": "lift the carton with both hands",
 }
 CAMS = {"image": "observation.images.third_person", "wrist_image": "observation.images.eye_in_hand"}
+# bimanual sets (make_dataset_bimanual): eye_in_hand = right wrist camera, eye_in_hand_left = left wrist camera
+CAMS_BIMANUAL = dict(CAMS, left_wrist_image="observation.images.eye_in_hand_left")
 
 
 # task strings stored in the teleop LeRobot sets (meta/tasks.parquet) -> DexVerse env id
 TELEOP_TASKS = {"Grasp bleach": "Dexverse-GraspBleach-v0", "Grasp pan": "Dexverse-GraspPan-v0",
-                "Grasp kettle": "Dexverse-GraspKettle-v0", "Functional hammer strike": "Dexverse-FunctionalHammerStrike-v0"}
+                "Grasp kettle": "Dexverse-GraspKettle-v0", "Functional hammer strike": "Dexverse-FunctionalHammerStrike-v0",
+                "Open flat folder": "Dexverse-OpenFlatFolder-v1", "Slide utility knife": "Dexverse-SlideUtilityKnife-v1",
+                "Bimanual lift tray": "Dexverse-BimanualLiftTray-v0", "Bimanual lift carton": "Dexverse-BimanualLiftCarton-v0"}
 
 
 def task_prompt(task: str) -> str:
@@ -44,6 +53,7 @@ class V3Dataset:
     def __init__(self, root: str, action_horizon: int, decoder_cache: int = 16):
         self.root, self.h, self.cache_n = root, action_horizon, decoder_cache
         self.info = json.load(open(f"{root}/meta/info.json"))
+        self.cams = CAMS_BIMANUAL if CAMS_BIMANUAL["left_wrist_image"] in self.info["features"] else CAMS
         eps = pd.concat([pd.read_parquet(f) for f in sorted(glob.glob(f"{root}/meta/episodes/*/*.parquet"))])
         self.eps = eps.sort_values("episode_index").set_index("episode_index")
         cols = ["index", "episode_index", "timestamp", "task_index", "observation.state", "action"]
@@ -73,7 +83,7 @@ class V3Dataset:
         return d
 
     def frame(self, i: int, key: str) -> np.ndarray:
-        vk = CAMS[key]; e = self.eps.loc[int(self.ep[i])]
+        vk = self.cams[key]; e = self.eps.loc[int(self.ep[i])]
         path = f"{self.root}/" + self.info["video_path"].format(video_key=vk, chunk_index=int(e[f"videos/{vk}/chunk_index"]),
                                                                 file_index=int(e[f"videos/{vk}/file_index"]))
         t = float(e[f"videos/{vk}/from_timestamp"]) + float(self.ts[i])
@@ -83,7 +93,7 @@ class V3Dataset:
     def __getitem__(self, i):
         i = int(i)
         idx = np.minimum(np.arange(i, i + self.h), self.ep_end[i] - 1)
-        out = {k: self.frame(i, k) for k in CAMS}
+        out = {k: self.frame(i, k) for k in self.cams}
         out.update(state=self.state[i], actions=self.action[idx], prompt=self.prompts[int(self.task[i])])
         return out
 

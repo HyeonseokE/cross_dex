@@ -5,7 +5,8 @@ Data: the make_dataset LeRobot v3.0 set (<out>/all) read by dexverse_xlvla.pi05.
 openpi's v2.1-only lerobot loader (openpi.training.data_loader.create_torch_dataset is replaced at run time, openpi files
 untouched). --repo_id is only the name of the norm-stats asset folder; --root is the dataset.
 Policy I/O:
-  images  : third_person -> base_0_rgb, eye_in_hand -> left_wrist_0_rgb (right wrist slot masked), as openpi LIBERO / DexVerse pi0.5
+  images  : third_person -> base_0_rgb, eye_in_hand -> left_wrist_0_rgb (right wrist slot masked), as openpi LIBERO / DexVerse pi0.5;
+            bimanual sets (make_dataset_bimanual): eye_in_hand (right hand) -> right_wrist_0_rgb, eye_in_hand_left -> left_wrist_0_rgb
   state   : [canonical wrist 9 | z 32] -> pi0.5 discrete state tokens in the prompt (discrete_state_input=True: XL-VLA
             "replace pi0's state tokens with latent tokens")
   prompt  : task sentence (no hand identity, as XL-VLA)
@@ -51,6 +52,10 @@ class LatentInputs(_transforms.DataTransformFn):
                "image": {"base_0_rgb": base, "left_wrist_0_rgb": _img(data["wrist_image"]), "right_wrist_0_rgb": np.zeros_like(base)},
                "image_mask": {"base_0_rgb": np.True_, "left_wrist_0_rgb": np.True_,
                               "right_wrist_0_rgb": np.True_ if self.model_type == _model.ModelType.PI0_FAST else np.False_}}
+        if "left_wrist_image" in data:   # bimanual: each wrist camera in its own slot (as openpi ALOHA), all three used
+            out["image"] = {"base_0_rgb": base, "left_wrist_0_rgb": _img(data["left_wrist_image"]),
+                            "right_wrist_0_rgb": _img(data["wrist_image"])}
+            out["image_mask"] = {k: np.True_ for k in out["image"]}
         if "actions" in data:
             out["actions"] = np.asarray(data["actions"], np.float32)
         if "prompt" in data:

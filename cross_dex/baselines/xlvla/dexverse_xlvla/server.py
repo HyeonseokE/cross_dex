@@ -5,6 +5,7 @@ Same protocol as teleop_dp_image/policy_server.py: ("reset", None) -> "ok"; ("ac
 --ckpt points at a folder with server.json:
   {"mode": "replay", "actions": <npz>, "episodes": [...]}   open-loop replay (step 4); episodes in evaluator order
   {"mode": "latent_dp", ...}                                 latent Diffusion Policy (step 5, dexverse_xlvla.policy)
+  {"mode": "pi05_latent" | "pi05_joint", "bimanual": true, ...}  bimanual pi0.5 (dexverse_xlvla.pi05.eval_bimanual)
 """
 import argparse
 import json
@@ -38,6 +39,9 @@ class Replay:
 
 if cfg["mode"] == "replay":
     policy = Replay(cfg)
+elif cfg.get("bimanual"):   # bimanual pi0.5 (pi05/eval_bimanual.py)
+    from dexverse_xlvla.pi05.eval_bimanual import Pi05BimanualPolicyServer
+    policy = Pi05BimanualPolicyServer(cfg)
 elif cfg["mode"] in ("pi05_latent", "pi05_joint", "pi05_lad"):
     from dexverse_xlvla.pi05.eval_policy import Pi05PolicyServer
     policy = Pi05PolicyServer(cfg)

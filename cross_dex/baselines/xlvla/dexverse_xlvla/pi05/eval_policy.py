@@ -62,6 +62,10 @@ class Pi05PolicyServer:
             sys.path.insert(0, os.environ.get("XLVLA_LAD_CODE", "/workspace/codes/dexverse/robot_clip"))
             from dexverse_lad.pi05_space import LadSpace
             self.lad = LadSpace(cfg["lad_ckpt"], self.tr.hand_models)
+        self._spawn(cfg)
+
+    def _spawn(self, cfg: dict):
+        """start the openpi inference process (pi05/serve.py); connected lazily in _connect"""
         port, key = _free_port(), secrets.token_hex(8)
         env = dict(os.environ, PYTHONPATH=CODE, XLA_PYTHON_CLIENT_PREALLOCATE="false")
         self.proc = subprocess.Popen([OPENPI_PY, "-m", "dexverse_xlvla.pi05.serve", "--ckpt", cfg["policy_ckpt"],

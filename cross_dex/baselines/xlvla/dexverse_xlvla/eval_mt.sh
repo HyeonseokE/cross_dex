@@ -12,6 +12,9 @@
 #      TASKS / HANDS (comma lists; TASKS order = the one-hot order of make_dataset --task), ONLY_TASKS (evaluate only these tasks)
 # pi0.5 (dexverse_xlvla/pi05/eval_policy.py): MODE=pi05_latent|pi05_joint|pi05_lad (LAD_CKPT=<lad_cam.pt>, PI05_ADIM=32), CK=<openpi checkpoint step dir>, PI05_RUN=<TrainConfig name>,
 #      PI05_REPO=<norm-stats asset id>, PI05_ADIM=<41|32>, REPLAN (10); SNAP/SAMPLER unused
+# bimanual pi0.5 (pi05/eval_bimanual.py): BIMANUAL=1 MODE=pi05_latent|pi05_joint, PI05_ADIM=82|62, PI05_MAXTOK=360|280,
+#      LATENT_LEFT=<left 6-hand latent> (latent), WRIST_DIR=<folder of bimanual wrist_calib_<task>.json>,
+#      TASKS=<the 4 bimanual tasks>, HANDS=<families>; the pickle of a cell = the one in its lerobot_conversions.jsonl
 set -u
 : "${R:?}" "${CK:?}" "${LATENT:?}" "${WRIST_DIR:?}"
 GPU=${GPU:-0}; SNAP=${SNAP:-last}; WORKERS=${WORKERS:-3}; MAX_STEPS=${MAX_STEPS:-3000}; EPS=${EPS:-$(seq -s, 0 49)}
@@ -36,12 +39,17 @@ want() { cat $1/want 2>/dev/null || echo $WANT; }   # per-cell episode target: <
 
 cell() {  # task hand
   local t=$1 h=$2 o=$R/eval/final/$1/$2 pk lg pid
-  pk=$(ls $PKL_ROOT/*/$t/${t}_*_floating_${h}_right.pkl | head -1)
+  if [ -n "${BIMANUAL:-}" ]; then   # the pickle the bimanual LeRobot cell was converted from (a task can have several)
+    pk=$(python3 -c "import json,sys; print(json.loads(open(sys.argv[1]).readlines()[-1])['pickle'])" \
+         ${XLVLA_TELEOP_ROOT:-/workspace/datasets/dexverse/teleop_lerobot}/$t/${h}_bimanual/lerobot_conversions.jsonl)
+  else pk=$(ls $PKL_ROOT/*/$t/${t}_*_floating_${h}_right.pkl | head -1); fi
   mkdir -p $o; lg=$o/eval.log
   pid=$(pgrep -f "run_eval.py .*--output_dir $o/eval " | head -1)   # adopt a running evaluation (manager restarted, e.g. fewer EPS)
   if [ -n "$pid" ]; then log "$t $h: adopted running evaluation (pid $pid)"
   else
-    if [[ $MODE == pi05_* ]]; then
+    if [ -n "${BIMANUAL:-}" ]; then
+      echo "{\"mode\": \"$MODE\", \"bimanual\": true, \"hand\": \"$h\", \"task\": \"$t\", \"policy_ckpt\": \"$POLICY\", \"run\": \"${PI05_RUN:?}\", \"repo_id\": \"${PI05_REPO:?}\", \"action_dim\": ${PI05_ADIM:?}, \"max_token_len\": ${PI05_MAXTOK:?}, \"latent_ckpt\": \"$LATENT\", \"latent_ckpt_left\": \"${LATENT_LEFT:-}\", \"wrist\": \"$WRIST_DIR/wrist_calib_$t.json\", \"replan\": ${REPLAN:-10}, \"log_dir\": null}" > $o/server.json
+    elif [[ $MODE == pi05_* ]]; then
       echo "{\"mode\": \"$MODE\", \"hand\": \"$h\", \"task\": \"$t\", \"policy_ckpt\": \"$POLICY\", \"run\": \"${PI05_RUN:?}\", \"repo_id\": \"${PI05_REPO:?}\", \"action_dim\": ${PI05_ADIM:?}, \"latent_ckpt\": \"$LATENT\", \"lad_ckpt\": \"${LAD_CKPT:-}\", \"wrist\": \"$WRIST_DIR/wrist_calib_$t.json\", \"replan\": ${REPLAN:-10}, \"log_dir\": null}" > $o/server.json
     else
     echo "{\"mode\": \"latent_dp\", \"hand\": \"$h\", \"policy_ckpt\": \"$POLICY\", \"latent_ckpt\": \"$LATENT\", \"wrist\": \"$WRIST_DIR/wrist_calib_$t.json\", \"task\": \"$t\", \"task_onehot\": $ONEHOT, $SAMPLER_JSON\"log_dir\": null}" > $o/server.json
