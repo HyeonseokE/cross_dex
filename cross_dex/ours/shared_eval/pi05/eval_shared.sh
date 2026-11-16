@@ -11,7 +11,7 @@
 # env as eval_mt.sh (pi0.5 part): LAD_CKPT, BIMANUAL=1 (+ PI05_MAXTOK, LATENT_LEFT, LAD_CKPT_LEFT), REPLAN (10), EPS, MAX_STEPS,
 #   TASKS, HANDS, ONLY_TASKS, DEXVERSE_WORKTREE, STOP_ON_KILL, KEEP_CLAIMS. Ours:
 #   SHARED (1; 0 = each cell runs the BASELINE run_eval.py with its own openpi process = old path, for comparisons)
-#   GATHER_MS (5 = greedy, measured best 2026-11-16; 1000 = lockstep), MAX_BATCH (=WORKERS), NOISE (process | episode, NOISE_SEED 0), PRECOMPILE (=MAX_BATCH)
+#   CELLS (task:hand,... instead of TASKS x HANDS), GATHER_MS (5 = greedy, measured best 2026-11-16; 1000 = lockstep), MAX_BATCH (=WORKERS), NOISE (process | episode, NOISE_SEED 0), PRECOMPILE (=MAX_BATCH)
 #   LOG_ACTIONS=1 (server.json log_dir = <cell>/actions: policy_out / action per episode, for old-vs-shared comparisons)
 #   STAGGER (90 s between session starts), DRY_RUN=1 (print the server command, each cell's server.json and command; no launch)
 set -u
@@ -110,7 +110,10 @@ cell() {  # task hand
 }
 
 cells() {
-  local t h
+  local t h c
+  if [ -n "${CELLS:-}" ]; then                     # explicit cells "task:hand,task:hand" (e.g. diagonal hold-out cells)
+    for c in ${CELLS//,/ }; do echo "${c%%:*} ${c#*:}"; done; return
+  fi
   for t in ${TASKS//,/ }; do for h in ${HANDS//,/ }; do
     [ -n "${ONLY_TASKS:-}" ] && [[ ",$ONLY_TASKS," != *",$t,"* ]] && continue
     echo "$t $h"
