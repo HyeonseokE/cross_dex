@@ -13,6 +13,9 @@ Metric 4 (cross-hand latent replay in the simulator) is not computed here.
                                   (noise relative to each space's own latent spread): joint (deg), fingertip (mm)
   8  latent alignment             held-out pair rows: hand A's latent finds hand B's latent of the same pose by cosine similarity
                                   among 4096 candidates (top-1 %, chance 0.024 %), mean over ordered pairs A != B and 4 blocks
+  10 resolution                  demo pose q and q + d (d: random direction per frame, RMS 1 deg over the joints; the same d
+                                  for every step of a chunk): does decode(enc(q + d)) - decode(enc(q)) reproduce d on the same
+                                  hand? relative error |out change - d| / |d| (%) and fingertip-displacement error (mm)
   (pair_self_*: held-out pair rows, same hand = the reference column "retargeting pair self reconstruction")
 
 Three steps, because the LAD model (robot_clip, omegaconf) and the hand FK models (DexLatent, urdf_parser_py) live in
@@ -203,6 +206,9 @@ def sys_path_seed():
         sys.path.insert(0, "/workspace/experiments")
 
 
+RES_DEG = 1.0                                            # metric 10 perturbation size (RMS over the joints)
+
+
 def unchunk(q, Hc):
     return q.reshape(-1, Hc, q.shape[-1]) if Hc > 1 else q
 
@@ -223,6 +229,13 @@ def load_inputs(out_dir):
     """inputs.npz (+ inputs_extra.npz when present) as one dict; kinds = the input sets available."""
     I = dict(np.load(f"{out_dir}/inputs.npz", allow_pickle=True))
     kinds = ["teleop", "pair"]
+    g = np.random.default_rng(1000)                       # metric 10: perturbed demo poses (fixed, same for every space)
+    for h in [str(x) for x in I["hands"]]:
+        q = I[f"teleop_{h}"]
+        if len(q):
+            d = g.standard_normal((q.shape[0],) + (1,) * (q.ndim - 2) + (q.shape[-1],)).astype(np.float32)
+            d *= np.deg2rad(RES_DEG) / np.sqrt((d ** 2).mean(-1, keepdims=True))
+            I[f"teleopd_{h}"] = (q + d).astype(np.float32)
     if os.path.exists(f"{out_dir}/inputs_extra.npz"):
         I.update(np.load(f"{out_dir}/inputs_extra.npz", allow_pickle=True)); kinds += ["random", "pinch"]
     return I, kinds
@@ -239,6 +252,8 @@ def extras(z_of, dec_self, hands, I, out, chunk=False):
             z = z_of(s, "teleop")
             e = torch.randn(z.shape, generator=g).to(z.device) * 0.05 * z.std(0, keepdim=True)
             out[f"contbase_{s}"] = dec_self(s, z); out[f"cont_{s}"] = dec_self(s, z + e)
+            if f"teleopd_{s}" in I:
+                out[f"res_{s}"] = dec_self(s, z_of(s, "teleopd"))
         z = z_of(s, "pair").float()
         z = z.flatten(1) if chunk else z.reshape(-1, Hc * z.shape[-1])          # [chunks, K*d] or [chunks, H*d]
         out[f"zpair_{s}"] = z[:16384].cpu().numpy()
@@ -369,6 +384,11 @@ def metrics(a):
                     out[s]["m7_cont_tip_mm"] = float((tips(s, c) - tips(s, b)).norm(dim=-1).mean() * 1e3)
                 elif f"zpair_{s}" in D.files:
                     out[s]["m7_cont_joint_deg"] = out[s]["m7_cont_tip_mm"] = float("nan")
+                if f"res_{s}" in D.files:                                                             # 10
+                    din = I[f"teleopd_{s}"] - I[f"teleop_{s}"]; dout = D[f"res_{s}"] - D[f"contbase_{s}"]
+                    out[s]["m10_res_rel_pct"] = float(100 * (np.linalg.norm(dout - din, axis=-1) / np.linalg.norm(din, axis=-1)).mean())
+                    tin = tips(s, I[f"teleopd_{s}"]) - ref["teleop"][s]; tout = tips(s, D[f"res_{s}"]) - tips(s, D[f"contbase_{s}"])
+                    out[s]["m10_res_tip_mm"] = float((tout - tin).norm(dim=-1).mean() * 1e3)
                 if f"zpair_{s}" in D.files:                                                           # 8
                     acc = []
                     for t in hands:
