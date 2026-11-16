@@ -8,6 +8,7 @@
 |---|---|---|
 | `xlvla_local.py` | XL-VLA + 국소 일관성 손실 (미세 차이 보존) | `dexverse_xlvla.train_latent` (트레이너 상속, 옵티마이저 래퍼) |
 | `lad_cover.py` | LAD + 관절 한계 정규화 + XL-VLA 무작위 자세 손실 (커버리지) | `dexverse_lad.train_cam` (`Hooks`) |
+| `shared_eval/` | 평가 모델 공유: GPU당 모델 1개를 여러 평가 세션이 함께 쓰고 추론을 묶어서(batch) 돌림 — DP(`dp/`, 옛 `baselines/lerobot_dp_shared`)·pi0.5(`pi05/`) | 공통 평가기 `eval_lerobot.py`, `dexverse_xlvla.pi05` 정책 클래스 (그대로 호출) |
 
 우리 청크 잠재 공간(`../latent/chunk_latent/`)도 우리 방법이다 (처음부터 따로 있었음).
 

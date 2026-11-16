@@ -40,6 +40,9 @@ own.add_argument("--save_obs", type=int, default=0, help="Save the first K obser
 own.add_argument("--server_log", default=None, help="dedicated: jsonl log of the started shared_server.py.")
 mine, rest = own.parse_known_args()
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # ours/shared_eval
+from batch_server import episode_seed  # noqa: E402
+
 EVALUATOR = Path(os.environ.get("DEXVERSE_ROOT", "/workspace/codes/dexverse/DexVerse")) / "baselines/lerobot_dp/eval_lerobot.py"
 SERVER = Path(__file__).resolve().parent / "shared_server.py"
 sys.argv = [str(EVALUATOR)] + rest
@@ -125,7 +128,7 @@ class TimedConnection:
             self.rows = {k: [] for k in ("actions", "call_ms", "step_ms", "chunk", "clock_before", "clock_after",
                                          "loop_ms", "img_crc", "state")}
             if mine.mode != "own":
-                message = {"seed": mine.seed * 100000 + EPISODES[self.episode_pos]}
+                message = {"seed": episode_seed(mine.seed, EPISODES[self.episode_pos])}
         elif kind == "act":
             now = time.perf_counter()
             if self.pending is not None:  # time from the previous reply to this request: env.step + probe + observe
