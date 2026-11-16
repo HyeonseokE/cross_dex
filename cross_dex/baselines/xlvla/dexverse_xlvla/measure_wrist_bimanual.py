@@ -303,6 +303,22 @@ def measure(payload, robot_type, use_recorded_starts):
             samples.append({"joint_pos": {n: float(qn[i]) for i, n in enumerate(robot.joint_names)},
                             "root_body_pose": pose_mat(tf[bid]).tolist(),
                             "tips_world": {b: tf[robot.body_names.index(b), :3].tolist() for b in tip_bodies if b}})
+        # random finger poses (action finger joints uniform in the sim limits; passive joints stay as reset, so tips
+        # behind passive / mimic joints are expected to differ): tests the finger joint name mapping with bent fingers
+        samples_rand = []
+        for k in range(args.fk_samples):
+            qs = q0.clone()
+            for i in fdims:
+                j = robot.joint_names.index(amap[i]["joint"])
+                qs[0, j] = float(rng.uniform(lo[j], hi[j]))
+            wq = np.array([qs[0, i].item() for i in jid]) + np.concatenate([rng.uniform(-0.05, 0.05, 3),
+                                                                            rng.uniform(-0.3, 0.3, 3)])
+            pose_at(bid, jid, wq, qs)
+            tf = view.get_link_transforms()[0].detach().cpu().numpy().astype(np.float64)
+            qn = robot.data.joint_pos[0].cpu().numpy()
+            samples_rand.append({"joint_pos": {n: float(qn[i]) for i, n in enumerate(robot.joint_names)},
+                                 "root_body_pose": pose_mat(tf[bid]).tolist(),
+                                 "tips_world": {b: tf[robot.body_names.index(b), :3].tolist() for b in tip_bodies if b}})
         out["sides"][side] = {
             "hand_model": hand if side == "right" else f"{hand}_left",
             "action_dims": dims, "wrist_dims": wdims, "finger_dims": fdims,
@@ -316,7 +332,7 @@ def measure(payload, robot_type, use_recorded_starts):
             "body": body, "root_link": root_link(hand, side), "body_from_root": t_root_link.tolist(), "M": m0.tolist(),
             "screws": screws, "check_pos_err_max_m": max(e[0] for e in errs),
             "check_rot_err_max_deg": max(e[1] for e in errs),
-            "tip_links": tip_links, "tip_bodies": tip_bodies, "fk_samples": samples,
+            "tip_links": tip_links, "tip_bodies": tip_bodies, "fk_samples": samples, "fk_samples_random": samples_rand,
             "passive_joints": [n for n in robot.joint_names if side_of(n) == side and n not in
                                {m["joint"] for m in amap}]}
         print(f"[wrist-bi] {robot_type} {side}: body={body} wrist dims {wdims} fingers {len(fdims)} "

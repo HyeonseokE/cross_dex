@@ -35,7 +35,8 @@ def _r(x, n=4):
     return float(np.round(float(x), n))
 
 
-def fk_check(space: B.BimanualSpace, calib: dict) -> dict:
+def fk_check(space: B.BimanualSpace, calib: dict, key: str = "fk_samples") -> dict:
+    """key: fk_samples (recorded / reset starts) or fk_samples_random (random action finger joints, newer calibrations)"""
     out = {}
     for s in B.SIDES:
         c, m, d = calib["sides"][s], space.models[s], space.side[s]
@@ -45,7 +46,7 @@ def fk_check(space: B.BimanualSpace, calib: dict) -> dict:
             hit = [b for b in c["tip_bodies"] if b and (b == key or b.endswith("_" + key) or b == t)]
             sim_tips[t] = hit[0] if hit else None
         errs = []
-        for smp in c["fk_samples"]:
+        for smp in c.get(key, []):
             jp = smp["joint_pos"]
             q_w = np.array([jp[n] for n in c["action_joints"]])
             fj = np.array([jp[c["finger_joints"][i]] for i in range(len(c["finger_joints"]))])
@@ -59,7 +60,8 @@ def fk_check(space: B.BimanualSpace, calib: dict) -> dict:
                 if sim_tips[t]:
                     errs.append((t, float(np.linalg.norm(pred[k] - np.asarray(smp["tips_world"][sim_tips[t]])))))
         e = np.array([x[1] for x in errs]) * 1000
-        out[s] = {"model": m.hand_name, "finger_name_rule": d["rule"], "tips_matched": sim_tips,
+        per_tip = {t: _r(np.max([e for n, e in errs if n == t]) * 1000, 2) for t in m.tip_links if any(n == t for n, _ in errs)}
+        out[s] = {"model": m.hand_name, "finger_name_rule": d["rule"], "tips_matched": sim_tips, "tip_err_mm_max_per_tip": per_tip,
                   "n": len(e), "tip_err_mm_mean": _r(e.mean(), 2) if len(e) else None,
                   "tip_err_mm_max": _r(e.max(), 2) if len(e) else None}
     return out
@@ -186,6 +188,8 @@ def main():
                                                              "check_pos_err_max_m", "check_rot_err_max_deg")}
                      for s in B.SIDES}}
     rep["fk"] = fk_check(lat, calib)
+    if any("fk_samples_random" in calib["sides"][s] for s in B.SIDES):
+        rep["fk_random_fingers"] = fk_check(lat, calib, "fk_samples_random")
     # dataset episode (check 1 / 3)
     import pandas as pd
     from dexverse_xlvla.make_dataset import names as dnames
