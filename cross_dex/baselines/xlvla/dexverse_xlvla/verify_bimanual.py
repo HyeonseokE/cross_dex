@@ -42,8 +42,8 @@ def fk_check(space: B.BimanualSpace, calib: dict, key: str = "fk_samples") -> di
         c, m, d = calib["sides"][s], space.models[s], space.side[s]
         sim_tips = {}
         for t in m.tip_links:                                 # model tip link -> articulation body (name match)
-            key = t.replace(".", "_")
-            hit = [b for b in c["tip_bodies"] if b and (b == key or b.endswith("_" + key) or b == t)]
+            tk = t.replace(".", "_")
+            hit = [b for b in c["tip_bodies"] if b and (b == tk or b.endswith("_" + tk) or b == t)]
             sim_tips[t] = hit[0] if hit else None
         errs = []
         for smp in c.get(key, []):
@@ -60,7 +60,7 @@ def fk_check(space: B.BimanualSpace, calib: dict, key: str = "fk_samples") -> di
                 if sim_tips[t]:
                     errs.append((t, float(np.linalg.norm(pred[k] - np.asarray(smp["tips_world"][sim_tips[t]])))))
         e = np.array([x[1] for x in errs]) * 1000
-        per_tip = {t: _r(np.max([e for n, e in errs if n == t]) * 1000, 2) for t in m.tip_links if any(n == t for n, _ in errs)}
+        per_tip = {t: _r(max(x for n, x in errs if n == t) * 1000, 2) for t in m.tip_links if any(n == t for n, _ in errs)}
         out[s] = {"model": m.hand_name, "finger_name_rule": d["rule"], "tips_matched": sim_tips, "tip_err_mm_max_per_tip": per_tip,
                   "n": len(e), "tip_err_mm_mean": _r(e.mean(), 2) if len(e) else None,
                   "tip_err_mm_max": _r(e.max(), 2) if len(e) else None}
