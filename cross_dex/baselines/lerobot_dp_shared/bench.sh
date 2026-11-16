@@ -4,7 +4,8 @@
 # own       = each session starts DexVerse's policy_server.py (today: one model per session)
 # dedicated = each session starts shared_server.py for itself only (seeded noise, no sharing)
 # shared    = one shared_server.py, N sessions connect to it
-# Sessions start STAGGER s apart (Isaac Sim start-up VRAM peak) and wait at a barrier, so the episodes run concurrently.
+# GATHER_MS (shared): how long a chunk request waits for the other sessions' (default 5 = greedy; ~1000 = lockstep,
+# every forward batches all active sessions). Sessions start STAGGER s apart (Isaac Sim start-up VRAM peak) and wait at a barrier, so the episodes run concurrently.
 # Writes <out_dir>/{s<i>.log, s<i>/timing/ep*.npz, server.jsonl, gpu.csv, DONE}.
 set -u
 OUT=$1 MODE=$2 N=$3 EPS=$4
@@ -30,7 +31,7 @@ if [ "$MODE" = shared ]; then
   PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
   export DP_SHARED_AUTHKEY=$(python -c 'import secrets; print(secrets.token_hex(16))')
   env -u LD_PRELOAD -u PYTHONPATH -u CONDA_PREFIX "$LEROBOT_PYTHON" "$HERE/shared_server.py" --ckpt "$CKPT" \
-    --port "$PORT" --authkey "$DP_SHARED_AUTHKEY" --sessions "$N" --log "$OUT/server.jsonl" \
+    --port "$PORT" --authkey "$DP_SHARED_AUTHKEY" --sessions "$N" --log "$OUT/server.jsonl" --gather_ms "${GATHER_MS:-5}" \
     --dp_dir "$DEXVERSE_ROOT/baselines/lerobot_dp" > "$OUT/server.log" 2>&1 &
   SERVER=$!
   EXTRA=(--address "127.0.0.1:$PORT")

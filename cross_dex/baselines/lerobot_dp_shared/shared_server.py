@@ -9,7 +9,7 @@ Same protocol per connection as DexVerse baselines/lerobot_dp/policy_server.py, 
 Any number of sessions connect to one port. Each keeps its own DP observation history and action queue (n_obs_steps /
 n_action_steps, like DiffusionPolicy.select_action). A call whose action queue still holds actions is answered at once;
 calls that need a new chunk are gathered (up to --gather_ms, or until every connected session waits) and denoised in one
-batched pass. Noise comes from a per-session CPU generator (initial sample and every DDPM step, row by row), so a
+batched pass. Noise comes from a per-session generator (initial sample and every DDPM step, row by row), so a
 session's actions do not depend on which other sessions share its batch.
 
   python shared_server.py --ckpt <pretrained_model> --port 7700 --authkey <hex> [--sessions N] [--log calls.jsonl]
@@ -34,8 +34,10 @@ parser.add_argument("--authkey", required=True)
 parser.add_argument("--sessions", type=int, default=0, help="Exit after this many sessions closed (0 = run until killed).")
 parser.add_argument("--gather_ms", type=float, default=5.0, help="Wait this long for more chunk requests to batch.")
 parser.add_argument("--max_batch", type=int, default=16)
-parser.add_argument("--generator_device", default="cpu",
-                    help="Noise generators on cpu (independent of batching) or cuda (B=1 matches LeRobot's own sampling).")
+parser.add_argument("--generator_device", default="cuda",
+                    help="Device of the per-session noise generators. cuda: no host->device copy per DDPM step, and B=1 "
+                         "draws exactly what LeRobot's select_action draws after torch.cuda.manual_seed(seed); cpu: "
+                         "~0.1 s slower per chunk on amp7 (100 copies). Either way each row uses only its own generator.")
 parser.add_argument("--log", default=None, help="jsonl with one line per call and per batched forward.")
 parser.add_argument("--dp_dir", default=os.path.join(os.environ.get("DEXVERSE_ROOT", "/workspace/codes/dexverse/DexVerse"),
                                                      "baselines", "lerobot_dp"),

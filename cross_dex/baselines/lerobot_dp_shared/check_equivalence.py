@@ -3,7 +3,7 @@
 
 A  B=1, cuda generator: shared_server actions == LeRobot DiffusionPolicy.select_action after torch.cuda.manual_seed(seed)
    (same queues, same draws) -> the reimplemented sampling is LeRobot's.
-B  cpu generators: one session alone vs. three sessions batched together (two with the same seed, one other seed)
+B  cuda and cpu generators: one session alone vs. three sessions batched together (two with the same seed, one other seed)
    -> a session's actions do not depend on who shares its batch.
 C  LeRobot generate_actions wall time for batch 1..5 (one model call = one 8-action chunk).
 
@@ -124,15 +124,16 @@ with torch.inference_mode():
         reference.append(post(policy.select_action(pre(to_batch(obs))))[0].cpu().numpy().astype(np.float32))
 results["A_shared_b1_vs_lerobot_select_action"] = diff(served, np.stack(reference))
 
-# B: one session alone vs. three batched (seeds s, s, s+1), cpu generators
-alone = serve_sessions([args.seed], "cpu", str(log_dir / "eq_B1.jsonl"))[0]
-log_b3 = log_dir / "eq_B3.jsonl"
-three = serve_sessions([args.seed, args.seed, args.seed + 1], "cpu", str(log_b3))
-batches = [json.loads(line)["batch"] for line in open(log_b3) if '"forward"' in line]
-results["B_batch_sizes"] = batches
-results["B_alone_vs_batched_same_seed"] = [diff(alone, three[0]), diff(alone, three[1])]
-results["B_alone_vs_other_seed"] = diff(alone, three[2])
-results["B_vs_A_cpu_vs_cuda_noise"] = diff(alone, served)
+# B: one session alone vs. three batched (seeds s, s, s+1), for both generator devices
+for dev in ("cuda", "cpu"):
+    alone = serve_sessions([args.seed], dev, str(log_dir / f"eq_B1_{dev}.jsonl"))[0]
+    log_b3 = log_dir / f"eq_B3_{dev}.jsonl"
+    three = serve_sessions([args.seed, args.seed, args.seed + 1], dev, str(log_b3))
+    results[f"B_{dev}_batch_sizes"] = [json.loads(line)["batch"] for line in open(log_b3) if '"forward"' in line]
+    results[f"B_{dev}_alone_vs_batched_same_seed"] = [diff(alone, three[0]), diff(alone, three[1])]
+    results[f"B_{dev}_alone_vs_other_seed"] = diff(alone, three[2])
+    if dev == "cuda":
+        results["B_cuda_alone_vs_A"] = diff(alone, served)
 
 # C: model call time by batch size (LeRobot generate_actions, 100 DDPM steps)
 with torch.inference_mode():
