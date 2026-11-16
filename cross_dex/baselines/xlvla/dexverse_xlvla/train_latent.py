@@ -44,76 +44,9 @@ class SampledHandAutoencoder(M.HandAutoencoder):
         return latent_arm, latent_hand, qpos_arm, qpos_hand, (mean_hand, logvar_hand)
 
 
-class LocalLossOptimizer:
-    """Wraps the trainer's optimizer: just before each step, adds the gradient of the local-consistency loss, so the
-    original CrossEmbodimentTrainer.step (DexLatent, unchanged) trains loss + w_local * local loss."""
-
-    def __init__(self, inner, extra):
-        self.inner, self.extra = inner, extra
-
-    def zero_grad(self, *a, **k):
-        return self.inner.zero_grad(*a, **k)
-
-    def step(self, *a, **k):
-        loss = self.extra()
-        if loss is not None:
-            loss.backward()
-        return self.inner.step(*a, **k)
-
-    def __getattr__(self, name):
-        return getattr(self.inner, name)
-
-
 class DexVerseTrainer(M.CrossEmbodimentTrainer):
     template_iters = 200
     template_lr = 0.05
-    w_local, local_deg, local_batch = 0.0, 1.0, 1024
-    last_local: dict = {}
-
-    def enable_local(self, w: float, deg: float, batch: int) -> None:
-        """Local-consistency loss (2026-11-16, user: "2번만 추가해서 한번 해보자"; ours, not the XL-VLA paper).
-        Uniform pose q per hand (XL-VLA's pose generator) and q + d, d a random direction with RMS `deg` degrees over the
-        joints. self: the decoded change on the same hand reproduces d; cross: the change of hand B decoded from hand A's
-        latents moves B's thumb->finger fingertip lines like A's. Both relative to the input change (scale free)."""
-        self.w_local, self.local_deg, self.local_batch = w, deg, batch
-        self.optimizer = LocalLossOptimizer(self.optimizer, self._local_loss)
-
-    def _local_loss(self):
-        if not self.w_local:
-            return None
-        dev = self.config.device
-        enc = lambda h, x: self.autoencoders[h].encode(x)[1]                                  # posterior mean
-        dec = lambda h, z: self.autoencoders[h].decode_from_latents(z[:, :0], z)[1]
-        q, q2, z, z2, lines = {}, {}, {}, {}, {}
-        rel_self = []
-        for h in self.hand_names:
-            m = self.hand_models[h]
-            half = (0.5 * (m._upper - m._lower)).to(dev).clamp_min(1e-6)
-            x = torch.empty(self.local_batch, m.dof_count(), device=dev).uniform_(-1, 1)
-            d = torch.randn_like(x)
-            d = d / d.pow(2).mean(-1, keepdim=True).sqrt() * torch.deg2rad(torch.tensor(self.local_deg, device=dev)) / half
-            x2 = (x + d).clamp(-1, 1)
-            q[h], q2[h] = x, x2
-            z[h], z2[h] = enc(h, x), enc(h, x2)
-            dout = dec(h, z2[h]) - dec(h, z[h])
-            din = x2 - x
-            rel_self.append((dout - din).pow(2).sum(-1).mean() / din.pow(2).sum(-1).mean().clamp_min(1e-12))
-            t1, t2 = m.forward(x), m.forward(x2)
-            lines[h] = (t2[:, 1:] - t2[:, :1]) - (t1[:, 1:] - t1[:, :1])                           # change of thumb->finger lines
-        rel_cross = []
-        for s in self.hand_names:
-            for t in self.hand_names:
-                if s == t:
-                    continue
-                mt = self.hand_models[t]
-                a1, a2 = mt.forward(dec(t, z[s]).clamp(-1, 1)), mt.forward(dec(t, z2[s]).clamp(-1, 1))
-                dt = (a2[:, 1:] - a2[:, :1]) - (a1[:, 1:] - a1[:, :1])
-                k = min(dt.shape[1], lines[s].shape[1])
-                ds = lines[s][:, :k].detach()
-                rel_cross.append((dt[:, :k] - ds).pow(2).sum(-1).mean() / ds.pow(2).sum(-1).mean().clamp_min(1e-12))
-        ls, lc = sum(rel_self) / len(rel_self), sum(rel_cross) / len(rel_cross)
-        self.last_local = {"local_self": float(ls), "local_cross": float(lc)}
-        return self.w_local * (ls + lc)
 
     def _cache_pinch_templates(self) -> None:
         """Thumb-finger contact templates: for finger k, minimise |tip_0 - tip_k|^2 from random starts (other joints
@@ -146,7 +79,7 @@ class DexVerseTrainer(M.CrossEmbodimentTrainer):
             print(f"[templates] {name}: {stats}", flush=True)
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser()
     ap.add_argument("--variant", choices=["code", "paper"], required=True)
     ap.add_argument("--run_dir", required=True)
@@ -161,12 +94,16 @@ def main() -> None:
                     help="save checkpoint_epoch_<step>.pt every N steps and run checks 1-2 on it (dexverse_xlvla."
                          "latent_monitor, background CPU process); check 3 (replay_monitor.sh) picks the checkpoints up")
     ap.add_argument("--monitor_tasks", default="Dexverse-GraspKettle-v0", help="comma-separated tasks for the checks")
-    ap.add_argument("--w_local", type=float, default=0.0,
-                    help="local-consistency loss weight (ours, 2026-11-16; 0 = XL-VLA as published): small pose changes kept "
-                         "on the same hand and carried to the other hands (DexVerseTrainer.enable_local)")
-    ap.add_argument("--local_deg", type=float, default=1.0, help="RMS size of the pose change d (deg)")
-    ap.add_argument("--local_batch", type=int, default=1024)
-    args = ap.parse_args()
+    return ap
+
+
+def main(argv=None, parser=None, trainer_cls=None, setup=None) -> None:
+    """XL-VLA training as reproduced here. Variants built on it (``cross_dex.ours.*``) pass their own parser (built from
+    ``build_parser()``), trainer subclass and ``setup(trainer, args) -> {extra config entries}``; a trainer attribute
+    ``extra_metrics`` (dict) is logged with the trainer's own metrics."""
+    ap = parser or build_parser()
+    trainer_cls = trainer_cls or DexVerseTrainer
+    args = ap.parse_args(argv)
     names = args.hands.split(",")
     bad = [h for h in names if h not in H.HANDS]          # right (HAND_NAMES) or left (LEFT_HAND_NAMES, bimanual)
     if bad or len(names) < 2:
@@ -183,20 +120,18 @@ def main() -> None:
         pinch_sampling_probability=0.0 if paper else 0.5,
         lambda_kl=1e-5 if paper else 0.0, pinch_template_count=args.template_count,
     )
-    tr = DexVerseTrainer(names, cfg)
-    if args.w_local:
-        tr.enable_local(args.w_local, args.local_deg, args.local_batch)
+    tr = trainer_cls(names, cfg)
+    extra_conf = setup(tr, args) if setup else {}
     tr.checkpoint_dir = args.ckpt_dir
     os.makedirs(args.ckpt_dir, exist_ok=True)
     os.makedirs(args.run_dir, exist_ok=True)
 
     conf = {k: (list(v) if isinstance(v, tuple) else v) for k, v in vars(cfg).items()}
     conf.update(device=str(cfg.device), variant=args.variant, hands=names, seed=args.seed,
-                w_local=args.w_local, local_deg=args.local_deg, local_batch=args.local_batch,
                 dof={h: tr.hand_dof_per_hand[h] for h in names}, tips={h: tr.hand_tip_count(h) for h in names},
                 z_sampling="reparameterize (train)" if paper else "mean",
                 pinch_templates="thumb-finger contact by distance minimisation" if not paper else "not used",
-                template_iters=DexVerseTrainer.template_iters)
+                template_iters=DexVerseTrainer.template_iters, **extra_conf)
     with open(os.path.join(args.run_dir, "config.yaml"), "w") as f:
         for k, v in conf.items():
             f.write(f"{k}: {json.dumps(v)}\n")
@@ -214,7 +149,7 @@ def main() -> None:
         for step in range(1, args.num_steps + 1):
             m = tr.step()
             if step % args.log_every == 0 or step == 1:
-                m = {**m, **tr.last_local}
+                m = {**m, **getattr(tr, "extra_metrics", {})}
                 for k, v in m.items():
                     mf.write(f"{step},train,{k},{v:.6g}\n")
                 mf.flush()
