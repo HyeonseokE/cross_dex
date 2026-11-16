@@ -1,15 +1,24 @@
-"""Adopted latent-space metrics 1-3 (experiments/a4/RSS2027/README.md "공유 잠재 공간 평가 메트릭") for LAD models on DexVerse and DexJoCo-X
-(the benchmark comes from the pair subsample: DexVerse teleop LeRobot sets, or the DexJoCo-X demos).
+"""Adopted latent-space metrics (experiments/a4/RSS2027/README.md "공유 잠재 공간 평가 메트릭") for LAD and XL-VLA models on
+DexVerse and DexJoCo-X (the benchmark comes from the pair subsample: DexVerse teleop LeRobot sets, or the DexJoCo-X demos).
+Metric 4 (cross-hand latent replay in the simulator) is not computed here.
 
   1  teleop self reconstruction   teleop finger actions -> encode -> decode on the same hand: joint error (deg), fingertip error (mm)
   2  cross reconstruction         held-out retargeting pair rows: latent of hand A decoded on hand B vs hand B's retargeted
                                   joints: joint error (deg), fingertip error (mm), mean over A != B
   3  cross geometric consistency  teleop frames: thumb-finger fingertip line of hand A vs of hand B decoded from A's latent:
                                   direction (deg), length (mm), mean over A != B (same definition as dexverse_xlvla.eval_latent.cross)
+  5  random-joint self reconstruction   joints uniform in the URDF limits -> same hand: joint (deg), fingertip (mm)
+  6  cross geometry on pinch / random   metric 3 on thumb-finger contact poses and on random joints: direction (deg), length (mm)
+  7  latent continuity            decode(z + e) vs decode(z) on the same hand, demo frames, e ~ N(0, (0.05 * std of z per dim)^2)
+                                  (noise relative to each space's own latent spread): joint (deg), fingertip (mm)
+  8  latent alignment             held-out pair rows: hand A's latent finds hand B's latent of the same pose by cosine similarity
+                                  among 4096 candidates (top-1 %, chance 0.024 %), mean over ordered pairs A != B and 4 blocks
+  (pair_self_*: held-out pair rows, same hand = the reference column "retargeting pair self reconstruction")
 
 Three steps, because the LAD model (robot_clip, omegaconf) and the hand FK models (DexLatent, urdf_parser_py) live in
 different environments (no package is added to either):
   prep     (dexlatent env)  teleop frames of every hand in the LAD joint order + the pair rows        -> inputs.npz
+  prep_extra (dexlatent env) random joints and pinch (thumb-finger contact) poses per hand            -> inputs_extra.npz
   decode   (lad env)        per checkpoint: self / cross decodes of the teleop frames and pair rows   -> decoded_<name>.npz
   metrics  (dexlatent env)  FK and the numbers                                                         -> space_<name>.json, summary
 
@@ -32,7 +41,8 @@ def model_name(h, side, bench="dexverse"):
 
 
 def bench_of(I):
-    return str(I["bench"]) if "bench" in I.files else "dexverse"
+    keys = I.files if hasattr(I, "files") else I
+    return str(I["bench"]) if "bench" in keys else "dexverse"
 
 
 def prep(a):
@@ -81,10 +91,67 @@ def prep(a):
     np.savez(f"{a.out}/inputs.npz", hands=np.asarray(hands), names=json.dumps(names), side=a.side, bench=bench, info=json.dumps(info), **out)
 
 
+def prep_extra(a):
+    """Random joints (uniform in the URDF limits) and thumb-finger contact poses (DexVerseTrainer templates, seed 1000), per
+    hand, in the LAD column order (rad). Separate from inputs.npz so the fixed demo / pair frames stay untouched."""
+    import HandLatent.model as HM
+    from dexverse_xlvla import hands as H
+    from dexverse_xlvla.train_latent import DexVerseTrainer
+    sys_path_seed()
+    I = np.load(f"{a.out}/inputs.npz", allow_pickle=True)
+    hands = [str(h) for h in I["hands"]]; names = json.loads(str(I["names"])); side = str(I["side"]); bench = bench_of(I)
+    H.install()
+    mn = {h: model_name(h, side, bench) for h in hands}
+    from seed_control import seed_everything
+    seed_everything(1000)
+    cfg = HM.TrainingConfig(arm_dof=0, pinch_template_count=a.n_pinch, checkpoint_dir="/workspace/.tmp/space_eval_unused",
+                            device=torch.device("cpu"))
+    tr = DexVerseTrainer([mn[h] for h in hands], cfg)
+    tr._cache_pinch_templates()
+    g = torch.Generator().manual_seed(1000)
+    out = {}
+    for h in hands:
+        m = tr.hand_models[mn[h]]; idx = m.data_index(names[h])
+        lo, hi = m._lower, m._upper
+        ang = lambda qn: ((qn.clamp(-1, 1) + 1) * 0.5 * (hi - lo) + lo).numpy()
+        for kind, qn in (("random", torch.rand(a.n_random, m.dof_count(), generator=g) * 2 - 1), ("pinch", tr._pinch_templates[mn[h]][:a.n_pinch])):
+            q = np.zeros((len(qn), len(idx)), np.float32); q[:, idx] = ang(qn)
+            out[f"{kind}_{h}"] = q
+        print(h, {k: out[f"{k}_{h}"].shape for k in ("random", "pinch")}, "pinch stats", tr.template_stats[mn[h]], flush=True)
+    np.savez(f"{a.out}/inputs_extra.npz", **out)
+
+
+def sys_path_seed():
+    import sys
+    if "/workspace/experiments" not in sys.path:
+        sys.path.insert(0, "/workspace/experiments")
+
+
+def load_inputs(out_dir):
+    """inputs.npz (+ inputs_extra.npz when present) as one dict; kinds = the input sets available."""
+    I = dict(np.load(f"{out_dir}/inputs.npz", allow_pickle=True))
+    kinds = ["teleop", "pair"]
+    if os.path.exists(f"{out_dir}/inputs_extra.npz"):
+        I.update(np.load(f"{out_dir}/inputs_extra.npz", allow_pickle=True)); kinds += ["random", "pinch"]
+    return I, kinds
+
+
+def extras(z_of, dec_self, hands, I, out):
+    """Metric 7 (decodes of noisy demo latents) and metric 8 inputs (pair-row latents). z_of(s, kind) -> latent tensor,
+    dec_self(s, z) -> joints (rad, LAD column order, numpy)."""
+    g = torch.Generator().manual_seed(1000)
+    for s in hands:
+        if len(I[f"teleop_{s}"]):
+            z = z_of(s, "teleop")
+            e = torch.randn(z.shape, generator=g).to(z.device) * 0.05 * z.std(0, keepdim=True)
+            out[f"contbase_{s}"] = dec_self(s, z); out[f"cont_{s}"] = dec_self(s, z + e)
+        out[f"zpair_{s}"] = z_of(s, "pair")[:16384].float().cpu().numpy()
+
+
 def decode(a):
     from types import SimpleNamespace
     from dexverse_lad.train_cam import make_model
-    I = np.load(f"{a.out}/inputs.npz", allow_pickle=True)
+    I, kinds = load_inputs(a.out)
     hands = [str(h) for h in I["hands"]]
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     for spec in a.ckpt:
@@ -96,13 +163,17 @@ def decode(a):
         mean = {h: torch.tensor(ck["normalization"][h]["mean"], dtype=torch.float32, device=dev) for h in hands}
         std = {h: torch.tensor(ck["normalization"][h]["std"], dtype=torch.float32, device=dev) for h in hands}
         out = {}
+        z_of = lambda s, kind: model.encoders[s]((torch.tensor(I[f"{kind}_{s}"], device=dev) - mean[s]) / std[s])
+        dec_t = lambda t, z: (model.decoders[t](z) * std[t] + mean[t]).cpu().numpy()
         with torch.no_grad():
-            for kind in ("teleop", "pair"):
+            for kind in kinds:
                 for s in hands:
-                    x = torch.tensor(I[f"{kind}_{s}"], device=dev)
-                    z = model.encoders[s]((x - mean[s]) / std[s])
+                    if not len(I[f"{kind}_{s}"]):
+                        continue
+                    z = z_of(s, kind)
                     for t in hands:                                 # every target hand (s == t = self reconstruction)
-                        out[f"{kind}_{s}_to_{t}"] = (model.decoders[t](z) * std[t] + mean[t]).cpu().numpy()
+                        out[f"{kind}_{s}_to_{t}"] = dec_t(t, z)
+            extras(z_of, dec_t, hands, I, out)
         np.savez(f"{a.out}/decoded_{name}.npz", ckpt=path, **out)
         print("decoded", name, path, flush=True)
 
@@ -110,7 +181,7 @@ def decode(a):
 def decode_xlvla(a):
     """Same output format as decode(), for an XL-VLA hand latent checkpoint (dexlatent env): comparison on the same inputs."""
     from dexverse_xlvla.eval_latent import dec, enc, load_eval
-    I = np.load(f"{a.out}/inputs.npz", allow_pickle=True)
+    I, kinds = load_inputs(a.out)
     hands = [str(h) for h in I["hands"]]; names = json.loads(str(I["names"])); side = str(I["side"])
     for spec in a.ckpt:
         name, path = spec.split("=", 1)
@@ -120,15 +191,22 @@ def decode_xlvla(a):
         M = {h: tr.hand_models[mn[h]] for h in hands}
         idx = {h: M[h].data_index(names[h]) for h in hands}
         out = {}
+        z_of = lambda s, kind: enc(tr, mn[s], M[s].angles_to_normalized(torch.tensor(I[f"{kind}_{s}"][:, idx[s]])).clamp(-1, 1))
+
+        def dec_t(t, z):
+            qn = dec(tr, mn[t], z).clamp(-1, 1)
+            ang = ((qn + 1) * 0.5 * (M[t]._upper - M[t]._lower) + M[t]._lower).numpy()      # model order, rad
+            q = np.zeros_like(ang); q[:, idx[t]] = ang                                         # -> LAD column order
+            return q
         with torch.no_grad():
-            for kind in ("teleop", "pair"):
+            for kind in kinds:
                 for s in hands:
-                    z = enc(tr, mn[s], M[s].angles_to_normalized(torch.tensor(I[f"{kind}_{s}"][:, idx[s]])).clamp(-1, 1))
+                    if not len(I[f"{kind}_{s}"]):
+                        continue
+                    z = z_of(s, kind)
                     for t in hands:
-                        qn = dec(tr, mn[t], z).clamp(-1, 1)
-                        ang = ((qn + 1) * 0.5 * (M[t]._upper - M[t]._lower) + M[t]._lower).numpy()      # model order, rad
-                        q = np.zeros_like(ang); q[:, idx[t]] = ang                                         # -> LAD column order
-                        out[f"{kind}_{s}_to_{t}"] = q
+                        out[f"{kind}_{s}_to_{t}"] = dec_t(t, z)
+            extras(z_of, dec_t, hands, I, out)
         np.savez(f"{a.out}/decoded_{name}.npz", ckpt=path, **out)
         print("decoded", name, path, flush=True)
 
@@ -136,7 +214,7 @@ def decode_xlvla(a):
 def metrics(a):
     from dexverse_xlvla import hands as H
     from dexverse_xlvla.eval_latent import line_err
-    I = np.load(f"{a.out}/inputs.npz", allow_pickle=True)
+    I, kinds = load_inputs(a.out)
     hands = [str(h) for h in I["hands"]]; names = json.loads(str(I["names"])); side = str(I["side"])
     M = {h: H.CanonicalHandModel(model_name(h, side, bench_of(I))) for h in hands}
     idx = {h: M[h].data_index(names[h]) for h in hands}
@@ -146,14 +224,15 @@ def metrics(a):
 
     summary = {}
     with torch.no_grad():
-        ref = {k: {h: tips(h, I[f"{k}_{h}"]) for h in hands} for k in ("teleop", "pair")}
+        ref = {k: {h: tips(h, I[f"{k}_{h}"]) for h in hands} for k in kinds}
         for f in sorted(glob.glob(f"{a.out}/decoded_*.npz")):
             name = os.path.basename(f)[8:-4]; D = np.load(f, allow_pickle=True)
             out = {h: {} for h in hands}
             for s in hands:
-                q = D[f"teleop_{s}_to_{s}"]                                                           # 1
-                out[s]["m1_teleop_self_joint_deg"] = float(np.rad2deg(np.abs(q - I[f"teleop_{s}"])).mean())
-                out[s]["m1_teleop_self_tip_mm"] = float((tips(s, q) - ref["teleop"][s]).norm(dim=-1).mean() * 1e3)
+                if f"teleop_{s}_to_{s}" in D.files:                                                   # 1 (no demo frames: skipped)
+                    q = D[f"teleop_{s}_to_{s}"]
+                    out[s]["m1_teleop_self_joint_deg"] = float(np.rad2deg(np.abs(q - I[f"teleop_{s}"])).mean())
+                    out[s]["m1_teleop_self_tip_mm"] = float((tips(s, q) - ref["teleop"][s]).norm(dim=-1).mean() * 1e3)
                 j, tp, dd, ll = [], [], [], []
                 for t in hands:
                     q = D[f"pair_{s}_to_{t}"]                                                         # 2
@@ -171,7 +250,37 @@ def metrics(a):
                 out[s].update(m2_cross_joint_deg=float(np.mean(j)), m2_cross_tip_mm=float(np.mean(tp)),
                               m3_teleop_line_dir_deg=float(np.mean(dd)) if dd else float("nan"),
                               m3_teleop_line_len_mm=float(np.mean(ll)) if ll else float("nan"))
-            out["mean"] = {k: float(np.nanmean([out[h][k] for h in hands])) for k in out[hands[0]]}      # hands without teleop: nan, skipped
+                if f"random_{s}_to_{s}" in D.files:                                                   # 5, 6
+                    q = D[f"random_{s}_to_{s}"]
+                    out[s]["m5_random_self_joint_deg"] = float(np.rad2deg(np.abs(q - I[f"random_{s}"])).mean())
+                    out[s]["m5_random_self_tip_mm"] = float((tips(s, q) - ref["random"][s]).norm(dim=-1).mean() * 1e3)
+                    for kind in ("pinch", "random"):
+                        dd, ll = [], []
+                        for t in hands:
+                            if t == s:
+                                continue
+                            k = min(M[s].tip_count(), M[t].tip_count())
+                            d, l = line_err(ref[kind][s], tips(t, D[f"{kind}_{s}_to_{t}"]), [(0, i) for i in range(1, k)])
+                            dd.append(d); ll.append(l * 1e3)
+                        out[s][f"m6_{kind}_line_dir_deg"] = float(np.mean(dd)); out[s][f"m6_{kind}_line_len_mm"] = float(np.mean(ll))
+                if f"cont_{s}" in D.files:                                                            # 7
+                    b, c = D[f"contbase_{s}"], D[f"cont_{s}"]
+                    out[s]["m7_cont_joint_deg"] = float(np.rad2deg(np.abs(c - b)).mean())
+                    out[s]["m7_cont_tip_mm"] = float((tips(s, c) - tips(s, b)).norm(dim=-1).mean() * 1e3)
+                elif f"zpair_{s}" in D.files:
+                    out[s]["m7_cont_joint_deg"] = out[s]["m7_cont_tip_mm"] = float("nan")
+                if f"zpair_{s}" in D.files:                                                           # 8
+                    acc = []
+                    for t in hands:
+                        if t == s:
+                            continue
+                        for b0 in range(0, 16384, 4096):
+                            zs = torch.nn.functional.normalize(torch.tensor(D[f"zpair_{s}"][b0:b0 + 4096]), dim=-1)
+                            zt = torch.nn.functional.normalize(torch.tensor(D[f"zpair_{t}"][b0:b0 + 4096]), dim=-1)
+                            acc.append(float(((zs @ zt.T).argmax(1) == torch.arange(len(zs))).float().mean()))
+                    out[s]["m8_align_top1_pct"] = 100 * float(np.mean(acc))
+            keys = list(dict.fromkeys(k for h in hands for k in out[h]))
+            out["mean"] = {k: float(np.nanmean([out[h].get(k, float("nan")) for h in hands])) for k in keys}      # hands without teleop: nan, skipped
             out["_ckpt"] = str(D["ckpt"]); out["_data"] = json.loads(str(I["info"]))
             json.dump(out, open(f"{a.out}/space_{name}.json", "w"), indent=1)
             summary[name] = out["mean"]
@@ -181,11 +290,13 @@ def metrics(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["prep", "decode", "decode_xlvla", "metrics"])
+    ap.add_argument("step", choices=["prep", "prep_extra", "decode", "decode_xlvla", "metrics"])
     ap.add_argument("--out", required=True)
     ap.add_argument("--pairs_sub", default="")
     ap.add_argument("--side", default="right")
     ap.add_argument("--n_teleop", type=int, default=30000)
     ap.add_argument("--ckpt", action="append", default=[])
+    ap.add_argument("--n_random", type=int, default=4096)
+    ap.add_argument("--n_pinch", type=int, default=1024)
     a = ap.parse_args()
-    {"prep": prep, "decode": decode, "decode_xlvla": decode_xlvla, "metrics": metrics}[a.step](a)
+    {"prep": prep, "prep_extra": prep_extra, "decode": decode, "decode_xlvla": decode_xlvla, "metrics": metrics}[a.step](a)
