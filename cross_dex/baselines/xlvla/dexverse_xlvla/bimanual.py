@@ -2,6 +2,7 @@
 right hand first:
 
   latent (pi05_XL): [R wrist 9 | R z 32 | L wrist 9 | L z 32]                    = 82 dims
+  lad (pi05_LAD)  : [R wrist 9 | R LAD z | L wrist 9 | L LAD z]                   = 82 dims with the 32-dim LAD models
   joint  (pi05)   : [R wrist 9 | R fingers padded to 22 | L wrist 9 | L fingers padded to 22] = 62 dims
 
 Which env action dims are which hand's wrist / fingers, their joint names, scale and offset and both wrists' kinematics
@@ -74,7 +75,8 @@ class BimanualSpace:
     """env action / state (action-term order, as the common evaluator sends joint_pos) <-> policy vector."""
 
     def __init__(self, calib: dict, hand: str, models: dict, codecs: dict | None = None, pad: int = PAD):
-        """models: side -> CanonicalHandModel; codecs: side -> trainer with the side model's VAE (latent) or None (joint)."""
+        """models: side -> CanonicalHandModel; codecs: side -> finger codec (encode(hand, fn), decode(hand, z), dim) of that
+        side (latent: XLCodec around the VAE trainer; lad: dexverse_lad.bimanual_space) or None (joint)."""
         self.hand, self.models, self.codecs, self.pad = hand, models, codecs, pad
         self.action_joints = calib["action_joints"]
         self.state_joints = calib.get("state_order_joints")       # evaluator state order (action joints first)
@@ -94,7 +96,9 @@ class BimanualSpace:
                 raise ValueError(f"{hand} {s}: {m.dof_count()} finger joints > pad {pad}")
             self.side[s] = {"wrist": Wrist(c, m.canon.numpy()), "wdims": list(c["wrist_dims"]),
                             "cols": fd[idx].tolist(), "scale": sc[idx], "offset": of[idx], "rule": rule}
-        self.k = codecs[SIDES[0]].config.latent_dim_hand if codecs else pad
+        self.k = int(codecs[SIDES[0]].dim) if codecs else pad
+        if codecs and int(codecs[SIDES[1]].dim) != self.k:
+            raise ValueError(f"right / left latent sizes differ: {self.k} vs {codecs[SIDES[1]].dim}")
         self.dim = 2 * (9 + self.k)
 
     def names(self) -> list:
@@ -104,9 +108,8 @@ class BimanualSpace:
 
     def _fingers(self, s: str, fn: torch.Tensor) -> np.ndarray:
         if self.codecs:
-            from dexverse_xlvla.eval_latent import enc
             with torch.no_grad():
-                return enc(self.codecs[s], model_name(self.hand, s), fn).numpy()
+                return self.codecs[s].encode(self.hand, fn).numpy()
         out = np.zeros((len(fn), self.pad), np.float32)
         out[:, : fn.shape[1]] = fn.numpy()
         return out
@@ -136,9 +139,8 @@ class BimanualSpace:
             out[:, d["wdims"]] = d["wrist"].actions_from_vec(vec[:, o:o + 9], q_init=q_wrist_init[s])
             f = torch.tensor(vec[:, o + 9:o + 9 + self.k], dtype=torch.float32)
             if self.codecs:
-                from dexverse_xlvla.eval_latent import dec
                 with torch.no_grad():
-                    qn = dec(self.codecs[s], model_name(self.hand, s), f).clamp(-1, 1)
+                    qn = self.codecs[s].decode(self.hand, f).clamp(-1, 1)
             else:
                 qn = f[:, : m.dof_count()].clamp(-1, 1)
             lo, hi = m._lower, m._upper
@@ -147,17 +149,43 @@ class BimanualSpace:
         return out
 
 
+class XLCodec:
+    """XL-VLA hand VAE of one side (posterior mean encode, decode), keyed by hand family."""
+
+    def __init__(self, tr, side: str):
+        self.tr, self.side, self.dim = tr, side, tr.config.latent_dim_hand
+
+    def encode(self, hand, fn):
+        from dexverse_xlvla.eval_latent import enc
+        return enc(self.tr, model_name(hand, self.side), fn)
+
+    def decode(self, hand, z):
+        from dexverse_xlvla.eval_latent import dec
+        return dec(self.tr, model_name(hand, self.side), z)
+
+
 def build(calib_json: str, hand: str, space: str, ckpt: str | None = None, ckpt_left: str | None = None,
           pad: int = PAD) -> BimanualSpace:
-    """space "latent": VAEs from ckpt (right 6-hand) / ckpt_left (left 6-hand); "joint": hand models only."""
+    """space "latent": VAEs from ckpt (right 6-hand) / ckpt_left (left 6-hand); "lad": LAD contrastive action models
+    (ckpt / ckpt_left = right / left model.pt or its folder, dexverse_lad.bimanual_space); "joint": hand models only."""
     calib = load_calib(calib_json, hand)
     if space == "latent":
         from dexverse_xlvla.eval_latent import load
-        codecs = {"right": load(ckpt), "left": load(ckpt_left)}
-        for tr in codecs.values():
+        trs = {"right": load(ckpt), "left": load(ckpt_left)}
+        for tr in trs.values():
             for a in tr.autoencoders.values():
                 a.eval()
-        models = {s: codecs[s].hand_models[model_name(hand, s)] for s in SIDES}
+        models = {s: trs[s].hand_models[model_name(hand, s)] for s in SIDES}
+        codecs = {s: XLCodec(trs[s], s) for s in SIDES}
+    elif space == "lad":
+        import os
+        import sys
+        lad_code = os.environ.get("XLVLA_LAD_CODE", "/workspace/codes/dexverse/robot_clip")   # dexverse_lad + robot_clip
+        if lad_code not in sys.path:
+            sys.path.insert(0, lad_code)
+        from dexverse_lad.bimanual_space import lad_codecs
+        models = {s: H.CanonicalHandModel(model_name(hand, s)) for s in SIDES}
+        codecs = lad_codecs(hand, {"right": ckpt, "left": ckpt_left}, models)
     elif space == "joint":
         codecs, models = None, {s: H.CanonicalHandModel(model_name(hand, s)) for s in SIDES}
     else:

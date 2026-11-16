@@ -12,7 +12,7 @@
 #      TASKS / HANDS (comma lists; TASKS order = the one-hot order of make_dataset --task), ONLY_TASKS (evaluate only these tasks)
 # pi0.5 (dexverse_xlvla/pi05/eval_policy.py): MODE=pi05_latent|pi05_joint|pi05_lad (LAD_CKPT=<lad_cam.pt>, PI05_ADIM=32), CK=<openpi checkpoint step dir>, PI05_RUN=<TrainConfig name>,
 #      PI05_REPO=<norm-stats asset id>, PI05_ADIM=<41|32>, REPLAN (10); SNAP/SAMPLER unused
-# bimanual pi0.5 (pi05/eval_bimanual.py): BIMANUAL=1 MODE=pi05_latent|pi05_joint, PI05_ADIM=82|62, PI05_MAXTOK=360|280,
+# bimanual pi0.5 (pi05/eval_bimanual.py): BIMANUAL=1 MODE=pi05_latent|pi05_joint|pi05_lad (LAD_CKPT / LAD_CKPT_LEFT), PI05_ADIM=82|62, PI05_MAXTOK=360|280,
 #      LATENT_LEFT=<left 6-hand latent> (latent), WRIST_DIR=<folder of bimanual wrist_calib_<task>.json>,
 #      TASKS=<the 4 bimanual tasks>, HANDS=<families>; the pickle of a cell = the one in its lerobot_conversions.jsonl
 set -u
@@ -48,7 +48,7 @@ cell() {  # task hand
   if [ -n "$pid" ]; then log "$t $h: adopted running evaluation (pid $pid)"
   else
     if [ -n "${BIMANUAL:-}" ]; then
-      echo "{\"mode\": \"$MODE\", \"bimanual\": true, \"hand\": \"$h\", \"task\": \"$t\", \"policy_ckpt\": \"$POLICY\", \"run\": \"${PI05_RUN:?}\", \"repo_id\": \"${PI05_REPO:?}\", \"action_dim\": ${PI05_ADIM:?}, \"max_token_len\": ${PI05_MAXTOK:?}, \"latent_ckpt\": \"$LATENT\", \"latent_ckpt_left\": \"${LATENT_LEFT:-}\", \"wrist\": \"$WRIST_DIR/wrist_calib_$t.json\", \"replan\": ${REPLAN:-10}, \"log_dir\": null}" > $o/server.json
+      echo "{\"mode\": \"$MODE\", \"bimanual\": true, \"hand\": \"$h\", \"task\": \"$t\", \"policy_ckpt\": \"$POLICY\", \"run\": \"${PI05_RUN:?}\", \"repo_id\": \"${PI05_REPO:?}\", \"action_dim\": ${PI05_ADIM:?}, \"max_token_len\": ${PI05_MAXTOK:?}, \"latent_ckpt\": \"$LATENT\", \"latent_ckpt_left\": \"${LATENT_LEFT:-}\", \"lad_ckpt\": \"${LAD_CKPT:-}\", \"lad_ckpt_left\": \"${LAD_CKPT_LEFT:-}\", \"wrist\": \"$WRIST_DIR/wrist_calib_$t.json\", \"replan\": ${REPLAN:-10}, \"log_dir\": null}" > $o/server.json
     elif [[ $MODE == pi05_* ]]; then
       echo "{\"mode\": \"$MODE\", \"hand\": \"$h\", \"task\": \"$t\", \"policy_ckpt\": \"$POLICY\", \"run\": \"${PI05_RUN:?}\", \"repo_id\": \"${PI05_REPO:?}\", \"action_dim\": ${PI05_ADIM:?}, \"latent_ckpt\": \"$LATENT\", \"lad_ckpt\": \"${LAD_CKPT:-}\", \"wrist\": \"$WRIST_DIR/wrist_calib_$t.json\", \"replan\": ${REPLAN:-10}, \"log_dir\": null}" > $o/server.json
     else

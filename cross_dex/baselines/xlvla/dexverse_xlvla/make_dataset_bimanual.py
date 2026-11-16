@@ -4,6 +4,9 @@ one LeRobot v3.0 set per (task, hand) bimanual teleop cell whose observation.sta
 
   --space latent : [R wrist 9 | R z 32 | L wrist 9 | L z 32] = 82  (pi05_XL;  openpi_train --action_dim 82 --max_token_len 360)
   --space joint  : [R wrist 9 | R fingers 22 | L wrist 9 | L fingers 22] = 62  (pi05; --action_dim 62 --max_token_len 280)
+  --space lad    : [R wrist 9 | R LAD z | L wrist 9 | L LAD z] (pi05_LAD; 82 with the 32-dim LAD models; --ckpt / --ckpt_left =
+                   right / left LAD model.pt or folder; dexverse_lad.bimanual_space)
+Per cell, <out>/<task>/<hand>/source.json records the teleop set read and (latent / lad) the finger encode -> decode error.
 
 Videos (third_person, eye_in_hand = right wrist camera, eye_in_hand_left) and meta are copied, the parquet keeps only the
 index columns plus the two vectors, stats are recomputed (as make_dataset). The dataset's action / state names must equal
@@ -120,14 +123,34 @@ def convert(space: B.BimanualSpace, src: str, dst: str, robot_type: str) -> None
     print(f"[data-bi] {space.hand}: {len(a)} frames, {space.dim} dims -> {dst}", flush=True)
 
 
+def roundtrip(space: B.BimanualSpace, src: str) -> dict | None:
+    """encode -> decode of the cell's finger actions per side (latent / lad): mean / p95 absolute joint error in degrees
+    over every frame and finger DoF (fingers clamped to the joint limits first, as the dataset vectors)."""
+    if not space.codecs:
+        return None
+    import torch
+    a = np.concatenate([np.stack(pd.read_parquet(f, columns=["action"])["action"].to_numpy())
+                        for f in sorted(glob.glob(f"{src}/data/*/*.parquet"))]).astype(np.float64)
+    out = {}
+    for s in B.SIDES:
+        d, m = space.side[s], space.models[s]
+        fn = m.angles_to_normalized(torch.tensor(d["offset"] + d["scale"] * a[:, d["cols"]], dtype=torch.float32)).clamp(-1, 1)
+        with torch.no_grad():
+            back = space.codecs[s].decode(space.hand, space.codecs[s].encode(space.hand, fn)).clamp(-1, 1)
+        err = np.degrees(((back - fn).abs() * 0.5 * (m._upper - m._lower)).numpy())
+        out[s] = {"deg_mean": round(float(err.mean()), 3), "deg_p95": round(float(np.percentile(err, 95)), 3),
+                  "frames": int(len(a))}
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--space", choices=["latent", "joint"], required=True)
+    ap.add_argument("--space", choices=["latent", "joint", "lad"], required=True)
     ap.add_argument("--task", default=",".join(TASKS))
     ap.add_argument("--hands", default=",".join(HANDS))
     ap.add_argument("--wrist", required=True, help="folder with wrist_calib_<task>.json (measure_wrist_bimanual.py)")
-    ap.add_argument("--ckpt", help="right 6-hand latent (latent space)")
-    ap.add_argument("--ckpt_left", help="left 6-hand latent (latent space)")
+    ap.add_argument("--ckpt", help="right 6-hand latent (latent) / right LAD model.pt or folder (lad)")
+    ap.add_argument("--ckpt_left", help="left 6-hand latent (latent) / left LAD model.pt or folder (lad)")
     ap.add_argument("--pad", type=int, default=B.PAD, help="joint space: fingers per hand zero-padded to this")
     ap.add_argument("--out", required=True)
     ap.add_argument("--roots", default="", help="teleop LeRobot roots, os.pathsep-separated (default: $XLVLA_TELEOP_ROOTS "
@@ -146,8 +169,8 @@ def main() -> None:
     else:
         cells = [c for c in ([(t, h) for t in tasks for h in hands] if not a.missing_ok else available(tasks, hands))
                  if c not in excl]
-    if a.space == "latent" and not (a.ckpt and a.ckpt_left) and not a.merge_only:
-        ap.error("--space latent needs --ckpt and --ckpt_left")
+    if a.space in ("latent", "lad") and not (a.ckpt and a.ckpt_left) and not a.merge_only:
+        ap.error(f"--space {a.space} needs --ckpt and --ckpt_left")
     robot_type = f"xlvla_{a.space}_bimanual_dexverse"
     if not a.merge_only:
         spaces = {}
@@ -162,7 +185,8 @@ def main() -> None:
             src = bimanual_dir(t, h)
             convert(spaces[h][1], src, d, robot_type)
             json.dump({"task": t, "hand": h, "source": src, "episodes": json.load(open(f"{src}/meta/info.json"))["total_episodes"],
-                       "space": a.space}, open(f"{d}/source.json", "w"), indent=1)
+                       "space": a.space, "finger_roundtrip": roundtrip(spaces[h][1], src)},
+                      open(f"{d}/source.json", "w"), indent=1)
             open(f"{d}/.done", "w").close()
     if a.no_merge:
         return

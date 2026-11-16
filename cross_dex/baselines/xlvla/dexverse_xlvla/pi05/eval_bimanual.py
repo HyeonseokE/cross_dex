@@ -5,6 +5,7 @@ run_eval.py like the one-hand Pi05PolicyServer (eval_policy.py); only the DexVer
 server.json: the one-hand keys plus
   "bimanual": true, "hand": <family, e.g. "allegro">, "wrist": <bimanual wrist_calib_<task>.json>,
   "latent_ckpt": <right 6-hand latent>, "latent_ckpt_left": <left 6-hand latent> (pi05_latent),
+  "lad_ckpt": <right LAD model.pt / folder>, "lad_ckpt_left": <left LAD> (pi05_lad, dexverse_lad.bimanual_space),
   "action_dim": 82 (latent) | 62 (joint), "max_token_len": 360 | 280 (as trained), "pad": 22 (joint)
 state  : evaluator joint_pos (action-term order first) -> [R wrist 9 | R z/fingers | L wrist 9 | L z/fingers]
 images : third_person -> "image", eye_in_hand (right wrist camera) -> "wrist_image", eye_in_hand_left -> "left_wrist_image"
@@ -26,12 +27,13 @@ class Pi05BimanualPolicyServer(Pi05PolicyServer):
         from dexverse_xlvla import bimanual as B
         from dexverse_xlvla.pi05.v3_dataset import PROMPTS
 
-        if cfg["mode"] not in ("pi05_latent", "pi05_joint"):
+        space = {"pi05_latent": "latent", "pi05_joint": "joint", "pi05_lad": "lad"}.get(cfg["mode"])
+        if space is None:
             raise ValueError(f"bimanual: mode {cfg['mode']} not supported")
-        self.cfg, self.latent = cfg, cfg["mode"] == "pi05_latent"
+        self.cfg, self.latent = cfg, space == "latent"
         self.hand, self.prompt, self.replan = cfg["hand"], PROMPTS[cfg["task"]], int(cfg.get("replan", 10))
-        self.space = B.build(cfg["wrist"], self.hand, "latent" if self.latent else "joint", cfg.get("latent_ckpt"),
-                             cfg.get("latent_ckpt_left"), int(cfg.get("pad", B.PAD)))
+        ck = (cfg.get("lad_ckpt"), cfg.get("lad_ckpt_left")) if space == "lad" else (cfg.get("latent_ckpt"), cfg.get("latent_ckpt_left"))
+        self.space = B.build(cfg["wrist"], self.hand, space, ck[0], ck[1], int(cfg.get("pad", B.PAD)))
         if self.space.dim != int(cfg["action_dim"]):
             raise ValueError(f"action_dim {cfg['action_dim']} != bimanual {cfg['mode']} space {self.space.dim}")
         self.sides = B.SIDES
