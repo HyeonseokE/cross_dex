@@ -23,6 +23,7 @@ sys.path.insert(0, os.environ.get("DEXLATENT_ROOT", "/workspace/codes/dexverse/D
 import torch  # noqa: E402
 
 from dexverse_xlvla import train_latent as TL  # noqa: E402
+from cross_dex.ours import fast_xl as FX  # noqa: E402
 
 
 class LocalLossOptimizer:
@@ -44,7 +45,7 @@ class LocalLossOptimizer:
         return getattr(self.inner, name)
 
 
-class LocalTrainer(TL.DexVerseTrainer):
+class LocalTrainer(FX.FastXLMixin, TL.DexVerseTrainer):
     w_local, local_deg, local_batch = 0.0, 1.0, 1024
 
     def enable_local(self, w: float, deg: float, batch: int) -> None:
@@ -92,11 +93,16 @@ def main(argv=None) -> None:
     ap.add_argument("--w_local", type=float, default=1.0, help="local-consistency loss weight")
     ap.add_argument("--local_deg", type=float, default=1.0, help="RMS size of the pose change d (deg)")
     ap.add_argument("--local_batch", type=int, default=1024)
+    ap.add_argument("--fast", type=int, default=1, help="1 = cross_dex.ours.fast_xl (batched FK / decoding, same maths)")
 
     def setup(tr, args):
+        if args.fast:
+            FX.make_fast(tr)
+            tr.fast = True
+            tr._local_loss = lambda: FX.fast_local_loss(tr)
         tr.enable_local(args.w_local, args.local_deg, args.local_batch)
         return {"method": "ours: XL-VLA + local consistency (cross_dex.ours.xlvla_local)", "w_local": args.w_local,
-                "local_deg": args.local_deg, "local_batch": args.local_batch}
+                "local_deg": args.local_deg, "local_batch": args.local_batch, "fast": args.fast}
 
     TL.main(argv, parser=ap, trainer_cls=LocalTrainer, setup=setup)
 

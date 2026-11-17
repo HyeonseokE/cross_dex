@@ -156,7 +156,7 @@ def main(argv=None, parser=None, trainer_cls=None, setup=None) -> None:
         json.dump(tr.template_stats, open(os.path.join(args.run_dir, "pinch_templates.json"), "w"), indent=1)
     for a in tr.autoencoders.values():
         a.train()
-    with open(os.path.join(args.run_dir, "metrics.csv"), "w") as mf:
+    with open(os.path.join(args.run_dir, "metrics.csv"), "w") as mf:     # resume: a new run dir (rows from start + 1)
         mf.write("step,split,metric,value\n")
         monitors = []
         for step in range(start + 1, args.num_steps + 1):

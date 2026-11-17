@@ -25,6 +25,7 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 
+from cross_dex.ours import fast_xl as FX
 from cross_dex.ours import uniform_pairs as UP
 from cross_dex.ours import xlvla_local as XLL
 from dexverse_xlvla import train_latent as TL
@@ -32,7 +33,7 @@ from dexverse_xlvla import train_latent as TL
 DP = {"huber_delta": 0.03, "project_dist": 0.03, "eta1": 1e-4, "eta2": 3e-2}   # DexPilotOptimizer defaults
 
 
-class PairTrainer(XLL.LocalTrainer):
+class PairTrainer(XLL.LocalTrainer):          # FastXLMixin comes with LocalTrainer
     w_pair = 0.0
 
     def enable_pair(self, a) -> dict:
@@ -176,19 +177,24 @@ def main(argv=None) -> None:
     ap.add_argument("--refresh_n", type=int, default=40000)
     ap.add_argument("--refresh_iters", type=int, default=300)
     ap.add_argument("--refresh_starts", type=int, default=1)
+    ap.add_argument("--fast", type=int, default=1, help="1 = cross_dex.ours.fast_xl (batched FK / decoding, same maths)")
     ap.add_argument("--stage1_steps", type=int, default=0,
                     help="E2: >0 = LAD-style stage 1 (encoders, pair InfoNCE only) for this many steps, then all losses")
     ap.add_argument("--stage1_tau0", type=float, default=0.25, help="E2 stage 1 start temperature (LAD 0.25)")
     ap.add_argument("--enc_lr_scale", type=float, default=0.1, help="E2 stage 2 encoder lr factor (LAD FT 1e-5 vs 1e-4)")
 
     def setup(tr, args):
+        if args.fast:                                      # cross_dex.ours.fast_xl: same maths, batched FK / decoding
+            FX.make_fast(tr)
+            tr.fast = True
+            tr._local_loss = lambda: FX.fast_local_loss(tr)
         tr.enable_local(args.w_local, args.local_deg, args.local_batch)
         info = tr.enable_pair(args)
         if args.stage1_steps:
             tr.enable_stages(args)
         keys = ("w_local", "local_deg", "local_batch", "pairs", "w_pair", "pair_batch", "pair_tau", "pair_max_res_mm",
                 "pair_buffer", "refresh_every", "refresh_n", "refresh_iters", "refresh_starts", "stage1_steps",
-                "stage1_tau0", "enc_lr_scale")
+                "stage1_tau0", "enc_lr_scale", "fast")
         return {"method": "ours: XL-VLA + local consistency + pair alignment, online pair buffer "
                           "(cross_dex.ours.xlvla_local_pair)" + (", LAD two-stage split (E2)" if args.stage1_steps else ""),
                 "dexpilot": DP, **{k: getattr(args, k) for k in keys}, **info}
