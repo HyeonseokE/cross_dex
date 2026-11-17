@@ -86,10 +86,11 @@ class PairTrainer(XLL.LocalTrainer):
         print(f"[refresh] call {self.pair_calls}: {n} new {s} poses -> buffer, {time.time() - t0:.0f}s, "
               f"usable % {self._usable()}", flush=True)
 
-    def _pair_backward(self):
+    def _pair_backward(self, nce_only: bool = False, tau: float | None = None):
         if not self.w_pair:
             return
         a = self.pa
+        tau = a.pair_tau if tau is None else tau
         self.pair_calls += 1
         if a.refresh_every and self.pair_calls % a.refresh_every == 0:
             self._refresh()
@@ -104,8 +105,9 @@ class PairTrainer(XLL.LocalTrainer):
             if int(m.sum()) < 2:
                 continue
             zx, zy = enc(x, m), enc(y, m)
-            cr = 0.5 * (F.mse_loss(dec(y, zx), self.buf_q[y][idx][m]) + F.mse_loss(dec(x, zy), self.buf_q[x][idx][m]))
-            logits = F.normalize(zx, dim=-1) @ F.normalize(zy, dim=-1).T / a.pair_tau
+            cr = (zx.new_zeros(()) if nce_only else
+                  0.5 * (F.mse_loss(dec(y, zx), self.buf_q[y][idx][m]) + F.mse_loss(dec(x, zy), self.buf_q[x][idx][m])))
+            logits = F.normalize(zx, dim=-1) @ F.normalize(zy, dim=-1).T / tau
             lab = torch.arange(len(zx), device=zx.device)
             nce = 0.5 * (F.cross_entropy(logits, lab) + F.cross_entropy(logits.T, lab))
             (self.w_pair * (cr + nce) / len(hp)).backward()
@@ -113,6 +115,50 @@ class PairTrainer(XLL.LocalTrainer):
         self.extra_metrics = {**getattr(self, "extra_metrics", {}), "pair_cr": tot_cr / max(used, 1),
                               "pair_nce": tot_nce / max(used, 1), "pair_hand_pairs": used,
                               "pair_refresh_sec": self.refresh_sec}
+
+
+class StagedPairTrainer(PairTrainer):
+    """E2 = the same losses and data as PairTrainer, split into LAD's two stages (LAD Sec. III, Table II/III "FT"):
+    stage 1 (steps 1..stage1_steps): encoders only, pair InfoNCE only, temperature annealed t0 -> pair_tau
+    (exponential, as LAD 0.25 -> 0.16); stage 2: every loss of PairTrainer, encoder learning rate x enc_lr_scale."""
+
+    stage1_steps, step_count, stage = 0, 0, 1
+
+    def enable_stages(self, a) -> None:
+        self.stage1_steps, self.t0, self.enc_lr_scale = a.stage1_steps, a.stage1_tau0, a.enc_lr_scale
+
+    @staticmethod
+    def _is_enc(name: str) -> bool:
+        return ".hand_encoder_backbone." in name or ".hand_mean_head." in name or ".hand_logvar_head." in name
+
+    def _enter_stage2(self) -> None:
+        old = self.optimizer.inner
+        named = list(self.autoencoders.named_parameters())
+        enc = [p for n, p in named if self._is_enc("." + n)]
+        rest = [p for n, p in named if not self._is_enc("." + n)]
+        lr = old.param_groups[0]["lr"]
+        new = torch.optim.AdamW([{"params": enc, "lr": lr * self.enc_lr_scale}, {"params": rest, "lr": lr}], lr=lr)
+        for p in enc + rest:                                           # keep Adam moments of stage 1
+            if p in old.state:
+                new.state[p] = old.state[p]
+        self.optimizer.inner = new
+        self.stage = 2
+        print(f"[stage] 2 from step {self.step_count}: all losses, encoder lr x{self.enc_lr_scale} "
+              f"({len(enc)} encoder / {len(rest)} other tensors)", flush=True)
+
+    def step(self):
+        self.step_count += 1
+        if self.step_count <= self.stage1_steps:
+            frac = (self.step_count - 1) / max(self.stage1_steps - 1, 1)
+            tau = self.t0 * (self.pa.pair_tau / self.t0) ** frac
+            self.optimizer.inner.zero_grad(set_to_none=True)
+            self._pair_backward(nce_only=True, tau=tau)
+            self.optimizer.inner.step()                                # decoders: grad None -> untouched
+            m = {"stage": 1.0, "pair_tau": tau, **{k: v for k, v in self.extra_metrics.items() if k.startswith("pair_")}}
+            return m
+        if self.stage == 1:
+            self._enter_stage2()
+        return {**super().step(), "stage": 2.0}
 
 
 def main(argv=None) -> None:
@@ -130,16 +176,25 @@ def main(argv=None) -> None:
     ap.add_argument("--refresh_n", type=int, default=40000)
     ap.add_argument("--refresh_iters", type=int, default=300)
     ap.add_argument("--refresh_starts", type=int, default=1)
+    ap.add_argument("--stage1_steps", type=int, default=0,
+                    help="E2: >0 = LAD-style stage 1 (encoders, pair InfoNCE only) for this many steps, then all losses")
+    ap.add_argument("--stage1_tau0", type=float, default=0.25, help="E2 stage 1 start temperature (LAD 0.25)")
+    ap.add_argument("--enc_lr_scale", type=float, default=0.1, help="E2 stage 2 encoder lr factor (LAD FT 1e-5 vs 1e-4)")
 
     def setup(tr, args):
         tr.enable_local(args.w_local, args.local_deg, args.local_batch)
         info = tr.enable_pair(args)
+        if args.stage1_steps:
+            tr.enable_stages(args)
         keys = ("w_local", "local_deg", "local_batch", "pairs", "w_pair", "pair_batch", "pair_tau", "pair_max_res_mm",
-                "pair_buffer", "refresh_every", "refresh_n", "refresh_iters", "refresh_starts")
+                "pair_buffer", "refresh_every", "refresh_n", "refresh_iters", "refresh_starts", "stage1_steps",
+                "stage1_tau0", "enc_lr_scale")
         return {"method": "ours: XL-VLA + local consistency + pair alignment, online pair buffer "
-                          "(cross_dex.ours.xlvla_local_pair)", "dexpilot": DP, **{k: getattr(args, k) for k in keys}, **info}
+                          "(cross_dex.ours.xlvla_local_pair)" + (", LAD two-stage split (E2)" if args.stage1_steps else ""),
+                "dexpilot": DP, **{k: getattr(args, k) for k in keys}, **info}
 
-    TL.main(argv, parser=ap, trainer_cls=PairTrainer, setup=setup)
+    args, _ = ap.parse_known_args(argv)
+    TL.main(argv, parser=ap, trainer_cls=StagedPairTrainer if args.stage1_steps else PairTrainer, setup=setup)
 
 
 if __name__ == "__main__":
