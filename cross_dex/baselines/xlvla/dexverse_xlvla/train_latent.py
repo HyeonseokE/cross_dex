@@ -94,6 +94,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="save checkpoint_epoch_<step>.pt every N steps and run checks 1-2 on it (dexverse_xlvla."
                          "latent_monitor, background CPU process); check 3 (replay_monitor.sh) picks the checkpoints up")
     ap.add_argument("--monitor_tasks", default="Dexverse-GraspKettle-v0", help="comma-separated tasks for the checks")
+    ap.add_argument("--resume", default="",
+                    help="checkpoint_epoch_<step>.pt of the same setup: load model + optimizer and continue from step+1 "
+                         "(constant lr, no scheduler; the data RNG restarts from --seed)")
     return ap
 
 
@@ -125,6 +128,16 @@ def main(argv=None, parser=None, trainer_cls=None, setup=None) -> None:
     tr.checkpoint_dir = args.ckpt_dir
     os.makedirs(args.ckpt_dir, exist_ok=True)
     os.makedirs(args.run_dir, exist_ok=True)
+    start = 0
+    if args.resume:
+        ck = torch.load(args.resume, map_location=cfg.device)
+        if list(ck["hand_names"]) != names:
+            ap.error(f"--resume: hands {ck['hand_names']} != {names}")
+        tr.autoencoders.load_state_dict(ck["autoencoders"])
+        tr.optimizer.load_state_dict(ck["optimizer"])
+        start = int(ck["epoch"])
+        print(f"[resume] {args.resume} -> continue from step {start + 1}", flush=True)
+        extra_conf = {**extra_conf, "resume_from": args.resume, "resume_step": start}
 
     conf = {k: (list(v) if isinstance(v, tuple) else v) for k, v in vars(cfg).items()}
     conf.update(device=str(cfg.device), variant=args.variant, hands=names, seed=args.seed,
@@ -146,9 +159,9 @@ def main(argv=None, parser=None, trainer_cls=None, setup=None) -> None:
     with open(os.path.join(args.run_dir, "metrics.csv"), "w") as mf:
         mf.write("step,split,metric,value\n")
         monitors = []
-        for step in range(1, args.num_steps + 1):
+        for step in range(start + 1, args.num_steps + 1):
             m = tr.step()
-            if step % args.log_every == 0 or step == 1:
+            if step % args.log_every == 0 or step == start + 1:
                 m = {**m, **getattr(tr, "extra_metrics", {})}
                 for k, v in m.items():
                     mf.write(f"{step},train,{k},{v:.6g}\n")
