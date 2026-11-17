@@ -10,6 +10,11 @@ Pair buffer (online with refresh): pair retargeting costs ~0.26 s per optimizer 
 --refresh_n new uniform poses of one source hand (round robin) are retargeted to the other hands with DexPilot's
 objective (cross_dex.ours.uniform_pairs.retarget) and replace the oldest buffer entries (ring). The buffer starts from
 --pairs (uniform_pairs output). A hand pair of one tuple counts only when both residuals are <= --pair_max_res_mm.
+E-b options (2026-11-18): --pair_direction best = for every hand pair only the tuples whose SOURCE is the better
+direction's source hand are used (direction = lower median retarget residual, measured at start on --dir_probe_n poses;
+e.g. 5-finger -> 4-finger, Inspire -> others), so 4 -> 5-finger pairs (little finger unconstrained) and pairs into a hand
+that cannot follow are left out, and retarget-retarget pairs (neither hand the source) too. --pair_res_adaptive 1 =
+threshold per direction max(pair_max_res_mm, min(median of that direction's latest block, pair_res_cap_mm)).
 The pair losses are back-propagated per hand pair inside the step (re-encoding each time) so the 16384 x 16384 logits
 of one hand pair at a time are kept, not of all 15.
 
@@ -43,8 +48,10 @@ class PairTrainer(XLL.LocalTrainer):          # FastXLMixin comes with LocalTrai
         srcs = [s for s in self.hand_names if f"{s}__{s}" in d.files]
         q = {h: [] for h in self.hand_names}
         res = {h: [] for h in self.hand_names}
+        src = []
         for s in srcs:
             n = len(d[f"{s}__{s}"])
+            src.append(torch.full((n,), self.hand_names.index(s), dtype=torch.long))
             for h in self.hand_names:
                 q[h].append(torch.from_numpy(d[f"{s}__{h}"]))
                 res[h].append(torch.zeros(n) if h == s else torch.from_numpy(d[f"{s}__{h}__res_mm"]))
@@ -54,16 +61,67 @@ class PairTrainer(XLL.LocalTrainer):          # FastXLMixin comes with LocalTrai
         size = min(a.pair_buffer, n_all)
         pick = torch.randperm(n_all)[:size]
         self.buf_q = {h: q[h][pick].to(dev) for h in self.hand_names}
-        self.buf_ok = {h: (res[h][pick] <= a.pair_max_res_mm).to(dev) for h in self.hand_names}
+        self.buf_res = {h: res[h][pick].float().to(dev) for h in self.hand_names}
+        self.buf_src = torch.cat(src)[pick].to(dev)
         self.buf_size, self.buf_ptr, self.pair_calls, self.refresh_src, self.refresh_sec = size, 0, 0, 0, 0.0
+        H = self.hand_names
+        self.thr = {(s, t): float(a.pair_max_res_mm) for s in H for t in H}       # residual threshold per direction
+        self.dir_src = None                                                      # (x, y) -> source hand, best mode
+        extra = {}
+        if a.pair_direction == "best" or a.pair_res_adaptive:
+            med = self._probe_medians(a.dir_probe_n)
+            extra["pair_probe_median_mm"] = {f"{s}>{t}": round(v, 1) for (s, t), v in med.items()}
+            if a.pair_res_adaptive:
+                self._set_thr(med)
+            if a.pair_direction == "best":
+                self.dir_src = {(x, y): (x if med[(x, y)] <= med[(y, x)] else y)
+                                for i, x in enumerate(H) for y in H[i + 1:]}
+                extra["pair_direction_src"] = {f"{x}-{y}": s for (x, y), s in self.dir_src.items()}
+                print("[pairs] direction (source) per hand pair: " +
+                      ", ".join(f"{x}-{y}<-{s}" for (x, y), s in self.dir_src.items()), flush=True)
         info = self._usable()
         print(f"[pairs] buffer {size} tuples from {a.pairs} ({n_all}, sources {srcs}); usable % {info}", flush=True)
         inner = self.optimizer.extra
         self.optimizer.extra = lambda: (self._pair_backward(), inner())[1]
-        return {"pair_init_tuples": n_all, "pair_buffer": size, "pair_init_usable_pct": info}
+        return {"pair_init_tuples": n_all, "pair_buffer": size, "pair_init_usable_pct": info, **extra}
+
+    @torch.enable_grad()
+    def _probe_medians(self, n):
+        """Median retarget residual (mm) of every direction s -> t on n uniform poses of s (current retarget code)."""
+        a, dev, H, med, t0 = self.pa, self.config.device, self.hand_names, {}, time.time()
+        for s in H:
+            qs = torch.empty(n, self.hand_models[s].dof_count(), device=dev).uniform_(-1, 1)
+            for t in H:
+                if t != s:
+                    _, rms, _ = UP.retarget(self.hand_models[s], self.hand_models[t], qs, a.refresh_iters, a.refresh_starts,
+                                            0.05, 1e-6, DP)
+                    med[(s, t)] = float(rms.median())
+        print(f"[pairs] probe medians ({n} poses / direction, {time.time() - t0:.0f}s): " +
+              ", ".join(f"{s}>{t} {v:.0f}" for (s, t), v in med.items()), flush=True)
+        return med
+
+    def _set_thr(self, med):
+        a = self.pa
+        for k, v in med.items():
+            self.thr[k] = max(a.pair_max_res_mm, min(v, a.pair_res_cap_mm))
+
+    def _ok(self, h, idx):
+        """Tuple usable for hand h: residual of (tuple source -> h) <= that direction's threshold (source itself: 0)."""
+        H = self.hand_names
+        thr = torch.tensor([self.thr[(s, h)] if s != h else float("inf") for s in H], device=self.buf_src.device)
+        return self.buf_res[h][idx] <= thr[self.buf_src[idx]]
+
+    def _pair_mask(self, x, y, idx):
+        m = self._ok(x, idx) & self._ok(y, idx)
+        if self.dir_src is not None:
+            m &= self.buf_src[idx] == self.hand_names.index(self.dir_src[(x, y)])
+        return m
 
     def _usable(self):
-        return {h: round(100 * float(v.float().mean()), 1) for h, v in self.buf_ok.items()}
+        idx = torch.arange(self.buf_size, device=self.buf_src.device)
+        if self.dir_src is None:
+            return {h: round(100 * float(self._ok(h, idx).float().mean()), 1) for h in self.hand_names}
+        return {f"{x}-{y}": round(100 * float(self._pair_mask(x, y, idx).float().mean()), 1) for (x, y) in self.dir_src}
 
     @torch.enable_grad()
     def _refresh(self):
@@ -72,16 +130,19 @@ class PairTrainer(XLL.LocalTrainer):          # FastXLMixin comes with LocalTrai
         self.refresh_src += 1
         n = a.refresh_n
         qs = torch.empty(n, self.hand_models[s].dof_count(), device=dev).uniform_(-1, 1)
-        new_q, new_ok = {s: qs}, {s: torch.ones(n, dtype=torch.bool, device=dev)}
+        new_q, new_res = {s: qs}, {s: torch.zeros(n, device=dev)}
         for t in self.hand_names:
             if t == s:
                 continue
             qt, rms, _ = UP.retarget(self.hand_models[s], self.hand_models[t], qs, a.refresh_iters, a.refresh_starts,
                                      0.05, 1e-6, DP)
-            new_q[t], new_ok[t] = qt.detach(), rms <= a.pair_max_res_mm
+            new_q[t], new_res[t] = qt.detach(), rms.float()
+            if a.pair_res_adaptive:                                   # threshold follows this direction's latest block
+                self._set_thr({(s, t): float(rms.median())})
         idx = (torch.arange(n, device=dev) + self.buf_ptr) % self.buf_size
         for h in self.hand_names:
-            self.buf_q[h][idx], self.buf_ok[h][idx] = new_q[h], new_ok[h]
+            self.buf_q[h][idx], self.buf_res[h][idx] = new_q[h], new_res[h]
+        self.buf_src[idx] = self.hand_names.index(s)
         self.buf_ptr = int((self.buf_ptr + n) % self.buf_size)
         self.refresh_sec += time.time() - t0
         print(f"[refresh] call {self.pair_calls}: {n} new {s} poses -> buffer, {time.time() - t0:.0f}s, "
@@ -102,7 +163,7 @@ class PairTrainer(XLL.LocalTrainer):          # FastXLMixin comes with LocalTrai
         dec = lambda h, z: self.autoencoders[h].decode_from_latents(z[:, :0], z)[1]
         tot_cr, tot_nce, used = 0.0, 0.0, 0
         for x, y in hp:
-            m = self.buf_ok[x][idx] & self.buf_ok[y][idx]
+            m = self._pair_mask(x, y, idx)
             if int(m.sum()) < 2:
                 continue
             zx, zy = enc(x, m), enc(y, m)
@@ -174,6 +235,12 @@ def main(argv=None) -> None:
     ap.add_argument("--pair_max_res_mm", type=float, default=15.0)
     ap.add_argument("--pair_buffer", type=int, default=240000,
                     help="multiple of 6 x refresh_n so every source hand always has tuples in the ring")
+    ap.add_argument("--pair_direction", choices=("all", "best"), default="all",
+                    help="best (E-b) = per hand pair only tuples sourced from the lower-residual direction's hand")
+    ap.add_argument("--pair_res_adaptive", type=int, default=0,
+                    help="1 (E-b) = threshold per direction max(pair_max_res_mm, min(median, pair_res_cap_mm))")
+    ap.add_argument("--pair_res_cap_mm", type=float, default=30.0)
+    ap.add_argument("--dir_probe_n", type=int, default=4000, help="poses per source hand to measure the direction medians")
     ap.add_argument("--refresh_every", type=int, default=500)
     ap.add_argument("--refresh_n", type=int, default=40000)
     ap.add_argument("--refresh_iters", type=int, default=300)
@@ -194,7 +261,7 @@ def main(argv=None) -> None:
         if args.stage1_steps:
             tr.enable_stages(args)
         keys = ("w_local", "local_deg", "local_batch", "pairs", "w_pair", "pair_batch", "pair_tau", "pair_max_res_mm",
-                "pair_buffer", "refresh_every", "refresh_n", "refresh_iters", "refresh_starts", "stage1_steps",
+                "pair_buffer", "pair_direction", "pair_res_adaptive", "pair_res_cap_mm", "dir_probe_n", "refresh_every", "refresh_n", "refresh_iters", "refresh_starts", "stage1_steps",
                 "stage1_tau0", "enc_lr_scale", "fast")
         return {"method": "ours: XL-VLA + local consistency + pair alignment, online pair buffer "
                           "(cross_dex.ours.xlvla_local_pair)" + (", LAD two-stage split (E2)" if args.stage1_steps else ""),
