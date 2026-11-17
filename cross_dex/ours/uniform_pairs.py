@@ -40,9 +40,19 @@ import torch  # noqa: E402
 from dexverse_xlvla import hands as H  # noqa: E402
 
 
+# Wrist point = FK root + this offset (m, canonical axes: x root -> fingertips). The FK root is the wrist for every
+# hand except Allegro, whose base_link sits on the finger-root line with the whole palm behind it (palm mesh x from
+# -98 to 0 mm at joints 0; 2026-11-18 check, root_check.png) -> moved to the palm's lower end. Without it Allegro's
+# wrist -> tip vectors are knuckle -> tip vectors and its thumb vector points backward (thumb residual 106 mm / 28 deg).
+WRIST_OFFSET = {"allegro": (-0.095, 0.0, 0.0), "allegro_left": (-0.095, 0.0, 0.0)}
+USE_WRIST_OFFSET = True                                          # False = the 2026-11-17 pairs (root as the wrist)
+
+
 def keyvecs(model, q):
     tips, _, _ = model._forward_internal(q)                       # (B, k, 3), canonical frame
     wrist = model.canon[:3, 3].to(tips)                          # root origin in the canonical frame
+    if USE_WRIST_OFFSET and model.hand_name in WRIST_OFFSET:
+        wrist = wrist + torch.tensor(WRIST_OFFSET[model.hand_name]).to(tips)
     return tips, tips - wrist
 
 
