@@ -15,6 +15,10 @@ direction's source hand are used (direction = lower median retarget residual, me
 e.g. 5-finger -> 4-finger, Inspire -> others), so 4 -> 5-finger pairs (little finger unconstrained) and pairs into a hand
 that cannot follow are left out, and retarget-retarget pairs (neither hand the source) too. --pair_res_adaptive 1 =
 threshold per direction max(pair_max_res_mm, min(median of that direction's latest block, pair_res_cap_mm)).
+E-c option: --pair_align l2sg (needs --pair_direction best) = the InfoNCE term is replaced by
+|enc_t(q_t) - stopgrad(enc_s(q_s))|^2 (mean over latent dims), s = the pair's source hand (exact, not retargeted pose):
+only the retargeted hand's latent is pulled to the source's, so the source hand's space is not compressed by many-to-one
+pairs. The cross reconstruction term is unchanged.
 The pair losses are back-propagated per hand pair inside the step (re-encoding each time) so the 16384 x 16384 logits
 of one hand pair at a time are kept, not of all 15.
 
@@ -169,13 +173,17 @@ class PairTrainer(XLL.LocalTrainer):          # FastXLMixin comes with LocalTrai
             zx, zy = enc(x, m), enc(y, m)
             cr = (zx.new_zeros(()) if nce_only else
                   0.5 * (F.mse_loss(dec(y, zx), self.buf_q[y][idx][m]) + F.mse_loss(dec(x, zy), self.buf_q[x][idx][m])))
-            logits = F.normalize(zx, dim=-1) @ F.normalize(zy, dim=-1).T / tau
-            lab = torch.arange(len(zx), device=zx.device)
-            nce = 0.5 * (F.cross_entropy(logits, lab) + F.cross_entropy(logits.T, lab))
+            if a.pair_align == "l2sg" and not nce_only:
+                zs, zt = (zx, zy) if self.dir_src[(x, y)] == x else (zy, zx)
+                nce = F.mse_loss(zt, zs.detach())                     # E-c: source-anchored latent L2
+            else:
+                logits = F.normalize(zx, dim=-1) @ F.normalize(zy, dim=-1).T / tau
+                lab = torch.arange(len(zx), device=zx.device)
+                nce = 0.5 * (F.cross_entropy(logits, lab) + F.cross_entropy(logits.T, lab))
             (self.w_pair * (cr + nce) / len(hp)).backward()
             tot_cr, tot_nce, used = tot_cr + float(cr), tot_nce + float(nce), used + 1
         self.extra_metrics = {**getattr(self, "extra_metrics", {}), "pair_cr": tot_cr / max(used, 1),
-                              "pair_nce": tot_nce / max(used, 1), "pair_hand_pairs": used,
+                              ("pair_l2" if a.pair_align == "l2sg" else "pair_nce"): tot_nce / max(used, 1), "pair_hand_pairs": used,
                               "pair_refresh_sec": self.refresh_sec}
 
 
@@ -240,6 +248,8 @@ def main(argv=None) -> None:
     ap.add_argument("--pair_res_adaptive", type=int, default=0,
                     help="1 (E-b) = threshold per direction max(pair_max_res_mm, min(median, pair_res_cap_mm))")
     ap.add_argument("--pair_res_cap_mm", type=float, default=30.0)
+    ap.add_argument("--pair_align", choices=("nce", "l2sg"), default="nce",
+                    help="l2sg (E-c) = source-anchored latent L2 instead of InfoNCE (needs --pair_direction best)")
     ap.add_argument("--dir_probe_n", type=int, default=4000, help="poses per source hand to measure the direction medians")
     ap.add_argument("--refresh_every", type=int, default=500)
     ap.add_argument("--refresh_n", type=int, default=40000)
@@ -257,11 +267,13 @@ def main(argv=None) -> None:
             tr.fast = True
             tr._local_loss = lambda: FX.fast_local_loss(tr)
         tr.enable_local(args.w_local, args.local_deg, args.local_batch)
+        if args.pair_align == "l2sg" and args.pair_direction != "best":
+            raise SystemExit("--pair_align l2sg needs --pair_direction best (the source hand is the anchor)")
         info = tr.enable_pair(args)
         if args.stage1_steps:
             tr.enable_stages(args)
         keys = ("w_local", "local_deg", "local_batch", "pairs", "w_pair", "pair_batch", "pair_tau", "pair_max_res_mm",
-                "pair_buffer", "pair_direction", "pair_res_adaptive", "pair_res_cap_mm", "dir_probe_n", "refresh_every", "refresh_n", "refresh_iters", "refresh_starts", "stage1_steps",
+                "pair_buffer", "pair_direction", "pair_res_adaptive", "pair_res_cap_mm", "pair_align", "dir_probe_n", "refresh_every", "refresh_n", "refresh_iters", "refresh_starts", "stage1_steps",
                 "stage1_tau0", "enc_lr_scale", "fast")
         return {"method": "ours: XL-VLA + local consistency + pair alignment, online pair buffer "
                           "(cross_dex.ours.xlvla_local_pair)" + (", LAD two-stage split (E2)" if args.stage1_steps else ""),
