@@ -172,7 +172,8 @@ def main(argv=None) -> None:
     ap.add_argument("--pair_batch", type=int, default=16384, help="LAD Table II batch")
     ap.add_argument("--pair_tau", type=float, default=0.16, help="LAD's final InfoNCE temperature")
     ap.add_argument("--pair_max_res_mm", type=float, default=15.0)
-    ap.add_argument("--pair_buffer", type=int, default=200000)
+    ap.add_argument("--pair_buffer", type=int, default=240000,
+                    help="multiple of 6 x refresh_n so every source hand always has tuples in the ring")
     ap.add_argument("--refresh_every", type=int, default=500)
     ap.add_argument("--refresh_n", type=int, default=40000)
     ap.add_argument("--refresh_iters", type=int, default=300)
