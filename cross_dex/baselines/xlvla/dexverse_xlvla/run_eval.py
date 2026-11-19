@@ -35,5 +35,13 @@ class _SwapServer(_Popen):
 
 
 subprocess.Popen = _SwapServer
+
+if os.environ.get("XLVLA_EVAL_PLAIN_RIGID") == "1":
+    # diagnosis (2026-11-19): keep Isaac Lab's plain RigidObject instead of the evaluator's ReplayRigidObject adapter.
+    # A stub module answers the evaluator's lazy `from dexverse.replay_rigid_object import configure_replay_rigid_objects`.
+    import types
+    _stub = types.ModuleType("dexverse.replay_rigid_object")
+    _stub.configure_replay_rigid_objects = lambda scene_cfg: print("[run_eval] XLVLA_EVAL_PLAIN_RIGID: plain RigidObject")
+    sys.modules["dexverse.replay_rigid_object"] = _stub
 sys.argv = [EVALUATOR] + sys.argv[1:]
 runpy.run_path(EVALUATOR, run_name="__main__")
