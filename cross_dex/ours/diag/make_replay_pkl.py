@@ -5,7 +5,7 @@ body collision) and, in mode shared, swaps the finger actions for the ones in <a
 self replay: fingers D_h(E_h(q*)), wrist copied). Mode raw writes the recorded actions as they are.
 Run with the simulator env (numpy 1.x, the env that wrote the pickles).
 
-  python make_replay_pkl.py <src.pkl> <raw|shared|fixed> <episodes, e.g. 0-9> <out.pkl> [actions.npz]
+  python make_replay_pkl.py <src.pkl> <raw|shared|fixed|cross> <episodes, e.g. 0-9> <out.pkl> [actions.npz]
 """
 import pickle
 import sys
@@ -22,7 +22,10 @@ def main():
     new = []
     for k in eps:
         e = dict(d["episodes"][k])
-        if mode != "raw":
+        if mode == "cross":   # <src.pkl> = cross_build's demos.pkl (t's pickle, s's scene): whole action = npz (t order)
+            e["actions"] = npz[str(k)].astype(np.asarray(e["actions"]).dtype)
+            print(f"episode {k}: cross actions {e['actions'].shape}")
+        elif mode != "raw":
             act = np.asarray(e["actions"]).copy()
             sh = npz[str(k)]
             assert sh.shape == act.shape, (sh.shape, act.shape)
