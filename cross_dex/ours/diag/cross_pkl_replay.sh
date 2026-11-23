@@ -2,7 +2,7 @@
 # Space-vs-ceiling evaluation (RSS2027): hand s's teleop episodes replayed on hand t through the conversion replay path
 # (pickle_to_lerobot -> record_demos --replay_demos, same as pkl_replay.sh), scene = s's episode, wrist converted
 # through the canonical frame. Fingers: dexpilot = DexPilot(s->t) (ceiling) / latent = D_t(E_s(q_s)) of <ckpt> / contact = world fingertip match (oracle intent).
-#   bash cross_pkl_replay.sh <task> <src> <dst> <dexpilot|latent|contact> <episodes> <out dir> [ckpt]
+#   bash cross_pkl_replay.sh <task> <src> <dst> <dexpilot|latent|contact|oracle_fix> <episodes> <out dir> [ckpt]
 # DIAG=1: render every episode (failed too) + per-step diagnostics instead of the conversion (diag_replay.py).
 # Wrist calibration: $WRIST_CALIB_DIR/wrist_calib_<task>.json (dexverse_xlvla.measure_wrist).
 set -euo pipefail
