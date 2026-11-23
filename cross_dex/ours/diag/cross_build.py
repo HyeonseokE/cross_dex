@@ -6,6 +6,7 @@ Hand s's teleop episode replayed on hand t (open loop, scene = s's episode):
                           space's training pairs) = the kinematic ceiling of a space trained on those pairs
            mode latent    D_t(E_s(q_s)) of the given latent checkpoint (XL-VLA format)
            mode oracle_fix DexPilot + oracle functional correction from t's own demos (oracle_fix.py)
+           mode oracle_fix2 v2: wrist + fingers, matched on object state + progress, gated (oracle_fix.correct2)
            mode contact   oracle intent: DexPilot init, then wrist + fingers moved so t's fingertips reach s's WORLD
                           fingertip positions (object-frame contact targets; contact_retarget.py)
 Writes <out>/actions.npz (per episode, t's action order) and <out>/demos.pkl (t's pickle with s's scene and t's start
@@ -35,7 +36,7 @@ def main():
     ap.add_argument("--task", required=True)
     ap.add_argument("--src", required=True)
     ap.add_argument("--dst", required=True)
-    ap.add_argument("--mode", choices=["dexpilot", "latent", "contact", "oracle_fix"], required=True)
+    ap.add_argument("--mode", choices=["dexpilot", "latent", "contact", "oracle_fix", "oracle_fix2"], required=True)
     ap.add_argument("--ckpt")
     ap.add_argument("--wrist", required=True)
     ap.add_argument("--episodes", default="0-4")
@@ -78,6 +79,11 @@ def main():
         if a.mode == "oracle_fix":
             from cross_dex.ours.diag.oracle_fix import correct
             qb, st = correct(a.task, a.src, a.dst, k, qb, a.wrist, dev)
+            stats[k].update(st)
+        if a.mode == "oracle_fix2":
+            from cross_dex.ours.diag.oracle_fix import correct2
+            qb, dpos, st = correct2(a.task, a.src, a.dst, k, qb, a.wrist, dev)
+            vec_t = vec_t.copy(); vec_t[:, :3] += dpos
             stats[k].update(st)
         if a.mode == "contact":
             from cross_dex.ours.diag.contact_retarget import compose_wrist, tip_match
