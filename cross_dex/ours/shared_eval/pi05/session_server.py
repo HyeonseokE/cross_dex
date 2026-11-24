@@ -22,6 +22,11 @@ import time
 from multiprocessing.connection import Listener
 from pathlib import Path
 
+# 2026-11-24: before numpy / torch load their thread pools. eval_shared.sh exports OMP_NUM_THREADS=4 for the simulator, and
+# with it each session server still burned about 2.5 cores on black1 (3 servers = 7.5 of 32 cores) after torch.set_num_threads(1).
+for _k in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+    os.environ[_k] = os.environ.get("SESSION_THREADS", "1")
+
 import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -38,12 +43,38 @@ args = parser.parse_args()
 cfg = json.loads((Path(args.ckpt) / "server.json").read_text())
 EPISODES = [int(i) for i in args.episodes.split(",")] if args.episodes else list(range(50))
 
+# 2026-11-24: the session's own torch work (finger latent encode/decode, small MLPs) needs one thread; eval_shared.sh's
+# OMP_NUM_THREADS=4 made each session server spin 1.1-1.6 cores on a CPU-bound host (p1, 12 sessions). SESSION_THREADS overrides.
+import torch as _torch
+_torch.set_num_threads(int(os.environ.get("SESSION_THREADS", "1")))
+
 if cfg.get("bimanual"):
     from dexverse_xlvla.pi05.eval_bimanual import Pi05BimanualPolicyServer as Base
 elif cfg["mode"] in ("pi05_latent", "pi05_joint", "pi05_lad"):
     from dexverse_xlvla.pi05.eval_policy import Pi05PolicyServer as Base
 else:
     raise SystemExit(f"session_server: pi0.5 modes only, got {cfg['mode']}")
+
+if cfg.get("residual_fix") and not cfg.get("bimanual"):
+    # ours (2026-11-23): self-residual module of crosshand_dp/residual_fix.py -> fingers = D_h(z) + f_h(z), as crosshand_dp/server.py.
+    # The baseline class imports dexverse_xlvla.eval_latent.dec inside act(), so wrapping that attribute changes only the decoder.
+    import torch
+    import dexverse_xlvla.eval_latent as _EL
+
+    def _mlp(n):  # = cross_dex.ours.diag.decoder_fix.mlp (cross_dex is not on this venv's path)
+        return torch.nn.Sequential(torch.nn.Linear(32, 512), torch.nn.SiLU(), torch.nn.Linear(512, 512), torch.nn.SiLU(),
+                                   torch.nn.Linear(512, n))
+
+    _F = torch.load(cfg["residual_fix"], map_location="cpu", weights_only=False)
+    _fix = _mlp(_F["dof"][cfg["hand"]]); _fix.load_state_dict(_F["state_dicts"][cfg["hand"]]); _fix.eval()
+    _dec0 = _EL.dec
+
+    def _dec_fix(tr, hand, z):
+        with torch.no_grad():
+            return _dec0(tr, hand, z) + _fix(z.float())
+
+    _EL.dec = _dec_fix
+    print(f"[session] residual_fix {cfg['residual_fix']} ({cfg['hand']})", flush=True)
 
 
 class Attached:

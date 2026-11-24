@@ -57,7 +57,7 @@ server_json() {  # task hand -> the baseline's server.json (same keys as eval_mt
   if [ -n "${BIMANUAL:-}" ]; then
     echo "{\"mode\": \"$MODE\", \"bimanual\": true, \"hand\": \"$h\", \"task\": \"$t\", \"policy_ckpt\": \"$POLICY\", \"run\": \"${PI05_RUN:?}\", \"repo_id\": \"${PI05_REPO:?}\", \"action_dim\": ${PI05_ADIM:?}, \"max_token_len\": ${PI05_MAXTOK:?}, \"latent_ckpt\": \"$LATENT\", \"latent_ckpt_left\": \"${LATENT_LEFT:-}\", \"lad_ckpt\": \"${LAD_CKPT:-}\", \"lad_ckpt_left\": \"${LAD_CKPT_LEFT:-}\", \"wrist\": \"$WRIST_DIR/wrist_calib_$t.json\", \"replan\": ${REPLAN:-10}, \"log_dir\": $ld}"
   else
-    echo "{\"mode\": \"$MODE\", \"hand\": \"$h\", \"task\": \"$t\", \"policy_ckpt\": \"$POLICY\", \"run\": \"${PI05_RUN:?}\", \"repo_id\": \"${PI05_REPO:?}\", \"action_dim\": ${PI05_ADIM:?}, \"latent_ckpt\": \"$LATENT\", \"lad_ckpt\": \"${LAD_CKPT:-}\", \"wrist\": \"$WRIST_DIR/wrist_calib_$t.json\", \"replan\": ${REPLAN:-10}, \"log_dir\": $ld}"
+    echo "{\"mode\": \"$MODE\", \"hand\": \"$h\", \"task\": \"$t\", \"policy_ckpt\": \"$POLICY\", \"run\": \"${PI05_RUN:?}\", \"repo_id\": \"${PI05_REPO:?}\", \"action_dim\": ${PI05_ADIM:?}, \"latent_ckpt\": \"$LATENT\", \"lad_ckpt\": \"${LAD_CKPT:-}\", \"wrist\": \"$WRIST_DIR/wrist_calib_$t.json\", \"replan\": ${REPLAN:-10}, \"residual_fix\": \"${RESID_FIX_DIR:+$RESID_FIX_DIR/$t.pt}\", \"log_dir\": $ld}"
   fi
 }
 
