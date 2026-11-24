@@ -4,6 +4,7 @@
 # through the canonical frame. Fingers: dexpilot = DexPilot(s->t) (ceiling) / latent = D_t(E_s(q_s)) of <ckpt> / contact = world fingertip match (oracle intent).
 #   bash cross_pkl_replay.sh <task> <src> <dst> <dexpilot|latent|contact|oracle_fix|oracle_fix2> <episodes> <out dir> [ckpt]
 # DIAG=1: render every episode (failed too) + per-step diagnostics instead of the conversion (diag_replay.py).
+# WRIST_F=palm|const:<json>|f:<ckpt>: wrist through an offset model (wrist_pairs/f_wrist.py, repo copy $XWO) instead of our canonical frame.
 # Wrist calibration: $WRIST_CALIB_DIR/wrist_calib_<task>.json (dexverse_xlvla.measure_wrist).
 set -euo pipefail
 T=$1 S=$2 D=$3 MODE=$4 EPS=$5 O=$6 CKPT=${7:-}
@@ -17,7 +18,7 @@ mkdir -p $O; O=$(cd $O && pwd)
 TMP=/workspace/.tmp/xrep_$(basename $(dirname $O))_$(basename $O)_$$; rm -rf $TMP; mkdir -p $TMP/in
 trap 'rm -rf $TMP' EXIT
 ( cd $CODE && PYTHONPATH=/workspace/codes/cross_dex $PY -m cross_dex.ours.diag.cross_build --task $T --src $S --dst $D \
-    --mode $MODE ${CKPT:+--ckpt $CKPT} --wrist $WRIST_CALIB_DIR/wrist_calib_$T.json --episodes $EPS --out $O/build ) > $O/build.log 2>&1
+    --mode $MODE ${CKPT:+--ckpt $CKPT} ${WRIST_F:+--wrist_f $WRIST_F --xwo ${XWO:-/workspace/.tmp/xwo}} --wrist $WRIST_CALIB_DIR/wrist_calib_$T.json --episodes $EPS --out $O/build ) > $O/build.log 2>&1
 NAME=$(basename $($MAIN -c "import json;print(json.load(open('$O/build/demos_spec.json'))['dst_pkl'])"))
 $MAIN $HERE/make_replay_pkl.py $O/build/demos.pkl cross $EPS $TMP/in/$NAME $O/build/actions.npz >> $O/build.log 2>&1
 rm -f $O/build/demos.pkl

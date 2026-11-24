@@ -44,7 +44,10 @@ from dexverse_xlvla import hands as H  # noqa: E402
 # hand except Allegro, whose base_link sits on the finger-root line with the whole palm behind it (palm mesh x from
 # -98 to 0 mm at joints 0; 2026-11-18 check, root_check.png) -> moved to the palm's lower end. Without it Allegro's
 # wrist -> tip vectors are knuckle -> tip vectors and its thumb vector points backward (thumb residual 106 mm / 28 deg).
-WRIST_OFFSET = {"allegro": (-0.095, 0.0, 0.0), "allegro_left": (-0.095, 0.0, 0.0)}
+WRIST_OFFSET = {"allegro": (-0.095, 0.0, 0.0), "allegro_left": (-0.095, 0.0, 0.0),
+                # DexJoCo-X Allegro URDF: same root at the finger-root line (open wrist->tip 183/143/135/143 mm without
+                # it vs 175/247/243/247 for the DexVerse Allegro with it; 2026-11-19 demo pair residual allegro>* 35-115 mm)
+                "dj_allegro": (-0.095, 0.0, 0.0), "dj_allegro_left": (-0.095, 0.0, 0.0)}
 USE_WRIST_OFFSET = True                                          # False = the 2026-11-17 pairs (root as the wrist)
 
 

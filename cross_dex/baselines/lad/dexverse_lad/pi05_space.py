@@ -7,8 +7,8 @@ targets in ENV ACTION order and joint units, z-scored per dimension. So
   encode: normalised model-order fingers -> joint angles -> env action order -> z-score -> encoder_h -> z (16)
   decode: z -> decoder_h -> un-z-score -> joint angles (env action order) -> model order -> [-1, 1]
 
-Joint names of the LAD inputs come from the pairs meta (``finger_joint_names``); copy it next to the checkpoint as
-``finger_joint_names.json`` (or pass ``names``). Encoders / decoders stay frozen (paper Sec. III-C).
+Joint names of the LAD inputs: ``hands.json`` next to the checkpoint (HF Dexverse-CSI/shared-action-spaces layout) or
+``finger_joint_names.json`` (pairs meta), or pass ``names``. Encoders / decoders stay frozen (paper Sec. III-C).
 """
 import json
 import os
@@ -53,8 +53,11 @@ class LadSpace:
         self.model.load_state_dict(p["state_dict"])
         self.model.eval()
         self.dim = int(p["config"]["model"]["embedding_dim"])
-        names = names or os.path.join(os.path.dirname(os.path.abspath(ckpt)), "finger_joint_names.json")
+        d = os.path.dirname(os.path.abspath(ckpt))
+        names = names or next(f for f in (f"{d}/hands.json", f"{d}/finger_joint_names.json") if os.path.exists(f))
         jn = json.load(open(names))
+        if "hands" in jn:      # shared-action-spaces hands.json: {"side", "hands": {hand: {"n", "joint_names_<side>": [...]}}}
+            jn = {h: v[f"joint_names_{jn.get('side', 'right')}"] for h, v in jn["hands"].items() if f"joint_names_{jn.get('side', 'right')}" in v}
         jn = jn.get("finger_joint_names", jn)
         from dexverse_xlvla.hands import HANDS
         self.mean, self.std, self.perm, self.inv, self.m = {}, {}, {}, {}, hand_models

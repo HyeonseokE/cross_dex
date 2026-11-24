@@ -43,6 +43,8 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--iters", type=int, default=300)
     ap.add_argument("--starts", type=int, default=2)
+    ap.add_argument("--wrist_f", default="", help="wrist through an offset model instead of our canonical frame: palm | const:<json> | f:<ckpt> (wrist_pairs/f_wrist.py)")
+    ap.add_argument("--xwo", default="/workspace/.tmp/xwo", help="xhand-wrist-offset-f repo copy (with --wrist_f)")
     a = ap.parse_args()
     assert a.src != a.dst
     a.out = os.path.abspath(a.out); os.makedirs(a.out, exist_ok=True)
@@ -63,6 +65,10 @@ def main():
     ia, ib = ma.data_index(an), mb.data_index(bn)
     wr = load_wrists(a.wrist, {h: models[h] for h in (a.src, a.dst)})
     dev = "cuda" if torch.cuda.is_available() else "cpu"
+    if a.wrist_f:
+        from cross_dex.ours.wrist_pairs.f_wrist import FWrist
+        fw = FWrist(a.xwo, a.wrist_f); dst_d = pickle.load(open(dst_pkl, "rb"))
+        d_root = np.asarray(dst_d["episodes"][0]["initial_state"]["articulation"]["robot"]["root_pose"])[0]; del dst_d
     torch.manual_seed(42)
     actions, start, stats = {}, {}, {}
     for k in eps:
@@ -95,7 +101,14 @@ def main():
         lo, hi = mb._lower, mb._upper
         out[:, ib] = ((qb + 1) * 0.5 * (hi - lo) + lo).numpy()
         wb = wr[a.dst]
-        out[:, :6] = wb.actions_from_vec(vec_t, q_init=wb.joints(np.zeros(6)))
+        if a.wrist_f:
+            s_root = np.asarray(src["episodes"][k]["initial_state"]["articulation"]["robot"]["root_pose"])[0]
+            qw, st = fw.convert(a.src, a.dst, an[:6], wr[a.src].joints(act[:, :6]), s_root, an[6:], act[:, 6:], bn[:6], d_root, bn[6:], out[:, 6:])
+            ours = wb.joints(wb.actions_from_vec(vec_t[:1], q_init=wb.joints(np.zeros(6))))[0]
+            st["first_step_vs_canonical_frame"] = [round(float(x), 3) for x in (qw[0] - ours)]; st["roots"] = [np.round(s_root, 3).tolist(), np.round(d_root, 3).tolist()]
+            out[:, :6] = wb.actions(qw); stats.setdefault(k, {}).update(st)
+        else:
+            out[:, :6] = wb.actions_from_vec(vec_t, q_init=wb.joints(np.zeros(6)))
         with torch.no_grad():
             allb = mb._normalized_to_all_joint_angles(qb[:1])
         stats.setdefault(k, {})["finger_step_mean"] = round(float(np.abs(np.diff(out[:, 6:], axis=0)).mean()), 5)
@@ -112,7 +125,7 @@ def main():
     import dexverse_xlvla
     bd = os.path.join(os.path.dirname(dexverse_xlvla.__file__), "build_demos.py")
     subprocess.run([MAIN_PYTHON, bd, f"{a.out}/demos_spec.json"], check=True, env={"PATH": os.environ.get("PATH", "")})
-    json.dump({"task": a.task, "src": a.src, "dst": a.dst, "mode": a.mode, "ckpt": a.ckpt, "episodes": eps,
+    json.dump({"task": a.task, "src": a.src, "dst": a.dst, "mode": a.mode, "ckpt": a.ckpt, "wrist_f": a.wrist_f, "episodes": eps,
                "stats": {str(k): v for k, v in stats.items()}}, open(f"{a.out}/build.json", "w"), indent=1)
 
 
