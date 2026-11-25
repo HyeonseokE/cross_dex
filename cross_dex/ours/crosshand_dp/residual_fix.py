@@ -7,6 +7,8 @@ Episodes --holdout (default 45-49) are left out of training and reported separat
 all 50, so the module is fitted on the same demos the DP saw.
 --train_tasks T1,T2,... fits f_h on those tasks' demos instead (task-holdout test, 2026-11-23: e.g. the other three
 tasks, then evaluated on --task); when --task is not among them, all of --task's episodes count as held out.
+--other_task_hands h1,h2 (2026-11-25, composition/diagonal models): only these hands use --train_tasks (their demos of
+--task are unseen by the policy, so f_h must not see them either); the other hands are fitted on --task as usual.
 Output file has the layout of cross_dex.ours.diag.decoder_fix (so its `build` and diag/pkl_replay.sh `fixed` also work).
 
   cd /workspace/codes/dexverse/DexLatent && PYTHONPATH=/workspace/codes/cross_dex python -m \
@@ -30,6 +32,7 @@ def main():
     ap.add_argument("--hands", default=HANDS)
     ap.add_argument("--task", default=TASK, help="evaluation task (and the training task unless --train_tasks)")
     ap.add_argument("--train_tasks", default="", help="comma list; default = --task")
+    ap.add_argument("--other_task_hands", default="", help="comma list: only these hands use --train_tasks (others: --task)")
     ap.add_argument("--holdout", default="45-49")
     ap.add_argument("--steps", type=int, default=20000)
     ap.add_argument("--out", required=True)
@@ -43,10 +46,15 @@ def main():
     hands = a.hands.split(","); hold = set(episode_list(a.holdout))
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(42)
-    out, nets = {}, {}
+    out, nets, used = {}, {}, {}
+    oth = set(a.other_task_hands.split(",")) if a.other_task_hands else set()
+    assert not oth or a.train_tasks, "--other_task_hands needs --train_tasks"
     for h in hands:
         M = tr.hand_models[h]; n = M.dof_count()
         tt = a.train_tasks.split(",") if a.train_tasks else [a.task]
+        if oth and h not in oth:
+            tt = [a.task]
+        used[h] = ",".join(tt)
         _, dq, _ = demo_q(tr, a.task, h)
         if a.task in tt:
             qtr = [v for k, v in dq.items() if k not in hold]; qte = torch.cat([v for k, v in dq.items() if k in hold])
@@ -68,11 +76,11 @@ def main():
         net = net.cpu().eval(); nets[h] = net
         with torch.no_grad():
             ftr = (str_ + net(ztr)).clamp(-1, 1); fte = (ste + net(zte)).clamp(-1, 1)
-        out[h] = {"train_frames": len(qtr), "holdout_frames": len(qte),
+        out[h] = {"train_tasks": used[h], "train_frames": len(qtr), "holdout_frames": len(qte),
                   "train_tip_mm_before": float(tip_mm(M, qtr, str_).mean()), "train_tip_mm_after": float(tip_mm(M, qtr, ftr).mean()),
                   "holdout_tip_mm_before": float(tip_mm(M, qte, ste).mean()), "holdout_tip_mm_after": float(tip_mm(M, qte, fte).mean())}
-        print(h, json.dumps({k: round(v, 3) for k, v in out[h].items()}), flush=True)
-    torch.save({"latent_ckpt": a.latent_ckpt, "pairs": None, "task": a.task, "train_tasks": a.train_tasks or a.task, "holdout": a.holdout, "hands": hands,
+        print(h, json.dumps({k: (round(v, 3) if isinstance(v, float) else v) for k, v in out[h].items()}), flush=True)
+    torch.save({"latent_ckpt": a.latent_ckpt, "pairs": None, "task": a.task, "train_tasks": a.train_tasks or a.task, "train_tasks_by_hand": used, "holdout": a.holdout, "hands": hands,
                 "steps": a.steps, "kind": "self_residual_task",
                 "state_dicts": {h: nets[h].state_dict() for h in hands},
                 "dof": {h: tr.hand_models[h].dof_count() for h in hands}}, a.out)
